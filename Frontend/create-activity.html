@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Activity - Smart Water</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        input[type="text"],
+        input[type="datetime-local"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="datetime-local"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create New Activity</h1>
+        <p class="subtitle">Track water maintenance activities for your home</p>
+
+        <div id="message" class="message"></div>
+
+        <form id="activityForm">
+            <div class="form-group">
+                <label for="activityType">
+                    Activity Type <span class="required">*</span>
+                </label>
+                <select id="activityType" name="activityType" required>
+                    <option value="">Select activity type</option>
+                    <option value="Water Tank Cleaning">Water Tank Cleaning</option>
+                    <option value="Pipe Inspection">Pipe Inspection</option>
+                    <option value="Leak Repair">Leak Repair</option>
+                    <option value="Filter Replacement">Filter Replacement</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="scheduledDateTime">
+                    Scheduled Date & Time <span class="required">*</span>
+                </label>
+                <input 
+                    type="datetime-local" 
+                    id="scheduledDateTime" 
+                    name="scheduledDateTime" 
+                    required
+                />
+            </div>
+
+            <div class="form-group">
+                <label for="location">
+                    Location / Address <span class="required">*</span>
+                </label>
+                <select id="location" name="location" required>
+                    <option value="">Select location</option>
+                    <option value="Kitchen">Kitchen</option>
+                    <option value="Bathroom">Bathroom</option>
+                    <option value="Roof Tank">Roof Tank</option>
+                    <option value="Garden">Garden</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="assignedStaff">
+                    Assigned Staff / Team <span class="required">*</span>
+                </label>
+                <input 
+                    type="text" 
+                    id="assignedStaff" 
+                    name="assignedStaff" 
+                    placeholder="e.g., Maintenance Team A, Family Member Name"
+                    required
+                />
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="Pending" selected>Pending</option>
+                    <option value="In-Progress">In-Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes / Observations</label>
+                <textarea 
+                    id="notes" 
+                    name="notes" 
+                    placeholder="e.g., Small leak detected, Tank needs deep cleaning"
+                ></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                Create Activity
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api/activities';
+        const form = document.getElementById('activityForm');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            setTimeout(() => {
+                messageDiv.className = 'message';
+                messageDiv.textContent = '';
+            }, 5000);
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            const formData = new FormData(form);
+            const activityData = {
+                activityType: formData.get('activityType'),
+                scheduledDateTime: formData.get('scheduledDateTime'),
+                location: formData.get('location'),
+                assignedStaff: formData.get('assignedStaff'),
+                status: formData.get('status') || 'Pending',
+                notes: formData.get('notes') || '',
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(activityData),
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showMessage('✅ Activity created successfully!', 'success');
+                    form.reset();
+                } else {
+                    showMessage(`❌ Error: ${result.message || 'Failed to create activity'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('❌ Network error. Please check if the backend server is running.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Activity';
+            }
+        });
+    </script>
+</body>
+</html>
