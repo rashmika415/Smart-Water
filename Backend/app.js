@@ -5,6 +5,7 @@ dotenv.config();
 const mongoose = require("mongoose");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 
 const PORT = process.env.PORT || 5000;
 
@@ -22,8 +23,11 @@ app.use((req, res, next) => {
 });
 
 // Routes (MVC - Routes connect to Controllers)
-const activityRoutes = require("./routes/activityRoutes");
+
 app.use("/api/activities", activityRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
 
 // Root route
 app.get("/", (req, res) => {
