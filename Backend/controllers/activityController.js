@@ -1,4 +1,5 @@
 const Activity = require("../models/Activity");
+<<<<<<< HEAD
 const mongoose = require("mongoose");
 
 //Get all activities
@@ -56,6 +57,8 @@ exports.getActivityById = async (req, res) => {
     });
   }
 };
+=======
+>>>>>>> parent of 28ca642 (Add Update activity functionality for Water Conservation Management)
 
 // Create a new activity
  
@@ -98,6 +101,7 @@ exports.createActivity = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
  // Update an existing activity by ID
  
@@ -136,6 +140,12 @@ exports.updateActivity = async (req, res) => {
       });
     }
 
+=======
+// Get all activities
+exports.getActivities = async (req, res) => {
+  try {
+    const activities = await Activity.find().sort({ createdAt: -1 });
+>>>>>>> parent of 28ca642 (Add Update activity functionality for Water Conservation Management)
     res.status(200).json({
       success: true,
       data: activities,
