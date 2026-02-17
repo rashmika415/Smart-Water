@@ -150,39 +150,3 @@ exports.updateActivity = async (req, res) => {
     });
   }
 };
-
-// Delete an activity by ID
-exports.deleteActivity = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid activity ID",
-      });
-    }
-
-    const deletedActivity = await Activity.findByIdAndDelete(id);
-
-    if (!deletedActivity) {
-      return res.status(404).json({
-        success: false,
-        message: "Activity not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Activity deleted successfully",
-      data: deletedActivity,
-    });
-  } catch (error) {
-    console.error("Error deleting activity:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error deleting activity",
-      error: error.message,
-    });
-  }
-};
