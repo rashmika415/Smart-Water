@@ -1,10 +1,8 @@
 const Activity = require("../models/Activity");
 const mongoose = require("mongoose");
 
-/**
- * Get all activities
- * @route GET /api/activities
- */
+//Get all activities
+ 
 exports.getActivities = async (req, res) => {
   try {
     const activities = await Activity.find().sort({ scheduledDateTime: 1 });
@@ -23,10 +21,8 @@ exports.getActivities = async (req, res) => {
   }
 };
 
-/**
- * Get a single activity by ID
- * @route GET /api/activities/:id
- */
+//Get a single activity by ID
+ 
 exports.getActivityById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -61,10 +57,8 @@ exports.getActivityById = async (req, res) => {
   }
 };
 
-/**
- * Create a new activity
- * @route POST /api/activities
- */
+// Create a new activity
+ 
 exports.createActivity = async (req, res) => {
   try {
     const { activityType, scheduledDateTime, location, assignedStaff, notes, status } = req.body;
@@ -104,10 +98,9 @@ exports.createActivity = async (req, res) => {
   }
 };
 
-/**
- * Update an existing activity by ID
- * @route PUT /api/activities/:id
- */
+
+ // Update an existing activity by ID
+ 
 exports.updateActivity = async (req, res) => {
   try {
     const { id } = req.params;
@@ -121,7 +114,7 @@ exports.updateActivity = async (req, res) => {
       });
     }
 
-    // Build update object (only include fields that are provided)
+    // Build update object 
     const updateFields = {};
     if (activityType !== undefined) updateFields.activityType = activityType;
     if (scheduledDateTime !== undefined) updateFields.scheduledDateTime = new Date(scheduledDateTime);
