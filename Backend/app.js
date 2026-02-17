@@ -6,6 +6,9 @@ const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const savingPlanRoutes = require("./routes/SavingPlanRoute");
+const usageRoutes = require("./routes/usageRoute");
+
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,6 +18,10 @@ app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use("/SavingPlan", savingPlanRoutes); // Use saving plan routes
 app.use("/usage", usageRoutes); // Use usage routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
+
 // CORS middleware
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -24,11 +31,8 @@ app.use((req, res, next) => {
 });
 
 // Routes (MVC - Routes connect to Controllers)
-
+const activityRoutes = require("./routes/activityRoutes");
 app.use("/api/activities", activityRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-
 
 // Root route
 app.get("/", (req, res) => {
