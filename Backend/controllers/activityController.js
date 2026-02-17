@@ -138,14 +138,13 @@ exports.updateActivity = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Activity updated successfully",
-      data: updatedActivity,
+      data: activities,
     });
   } catch (error) {
-    console.error("Error updating activity:", error);
+    console.error("Error fetching activities:", error);
     res.status(500).json({
       success: false,
-      message: "Error updating activity",
+      message: "Error fetching activities",
       error: error.message,
     });
   }
