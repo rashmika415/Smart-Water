@@ -3,10 +3,10 @@ const Schema = mongoose.Schema;
 
 const SavingPlanSchema = new mongoose.Schema({
    householdId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Household',
-    required: true
-  },
+  type: String,
+  required: true
+},
+
   planType: {
     type: String,
     required: true

@@ -6,7 +6,8 @@ const SavingPlan = require("../models/SavingPlanModel");
 //Insert controller
 const SavingPlanController = require("../controllers/SavingPlanController");
 
-router.get("/getAllSavingPlans", SavingPlanController.getAllSavingPlans);
-
+router.get("/", SavingPlanController.getAllSavingPlans);
+router.post("/", SavingPlanController.addSavingPlan);
+router.get("/:id", SavingPlanController.getSavingPlanById);
 //export
 module.exports = router;
