@@ -18,6 +18,10 @@ app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use("/SavingPlan", savingPlanRoutes); // Use saving plan routes
 app.use("/usage", usageRoutes); // Use usage routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
+
 // CORS middleware
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
