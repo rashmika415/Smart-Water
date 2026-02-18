@@ -8,13 +8,4 @@ router.post("/", activityController.createActivity);
 // READ - Get all activities
 router.get("/", activityController.getActivities);
 
-// READ - Get one activity by ID
-router.get("/:id", activityController.getActivityById);
-
-// UPDATE - Update an activity by ID
-router.put("/:id", activityController.updateActivity);
-
-// DELETE - Delete an activity by ID
-router.delete("/:id", activityController.deleteActivity);
-
 module.exports = router;
