@@ -55,8 +55,47 @@ const getSavingPlanById = async (req, res) => {
     }
     return res.status(200).json({ savingPlan });
 };
+const updateSavingPlan = async (req, res) => {
+    const id = req.params.id;
+    const { householdId, planType, householdSize,priorityArea,customGoalPercentage,waterSource } = req.body;    
+    let savingPlan;
+    try {
+        savingPlan = await SavingPlan.findByIdAndUpdate(id, {
+            householdId,
+            planType,
+            householdSize,  
+            priorityArea,
+            customGoalPercentage,
+            waterSource
+        });
+        savingPlan = await savingPlan.save();
+    } catch (err) {
+        console.log(err);
+    }   
+    if (!savingPlan) {
+        return res.status(404).json({ message: "Unable to update" });
+    }
+    return res.status(200).json({ savingPlan });
+};
+const deleteSavingPlan = async (req, res) => {  
+    const id = req.params.id;
+    let savingPlan;
+    try {
+        savingPlan = await SavingPlan.findByIdAndDelete(id);
+    
+    } catch (err) {
+        console.log(err);
+    }
+    if (!savingPlan) {
+        return res.status(404).json({ message: "Unable to delete" });
+    }   
+    return res.status(200).json({ message: "Saving plan successfully deleted" });
+};
+
 
 
 exports.getAllSavingPlans = getAllSavingPlans;
 exports.addSavingPlan = addSavingPlan;
 exports.getSavingPlanById = getSavingPlanById;
+exports.deleteSavingPlan = deleteSavingPlan;
+exports.updateSavingPlan = updateSavingPlan;

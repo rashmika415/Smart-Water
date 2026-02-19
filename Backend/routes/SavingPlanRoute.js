@@ -9,5 +9,7 @@ const SavingPlanController = require("../controllers/SavingPlanController");
 router.get("/", SavingPlanController.getAllSavingPlans);
 router.post("/", SavingPlanController.addSavingPlan);
 router.get("/:id", SavingPlanController.getSavingPlanById);
+router.put("/:id", SavingPlanController.updateSavingPlan);
+router.delete("/:id", SavingPlanController.deleteSavingPlan);
 //export
 module.exports = router;
