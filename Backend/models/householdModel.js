@@ -7,7 +7,7 @@ const householdSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    address: {
+    location: {                 // <-- renamed from 'address' to 'location' to match controller
       type: String
     },
     numberOfResidents: {
@@ -18,6 +18,11 @@ const householdSchema = new mongoose.Schema(
     propertyType: {
       type: String,
       enum: ["apartment", "house"],
+      required: true
+    },
+    userId: {                   // <-- MUST include userId to store owner
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true
     }
   },

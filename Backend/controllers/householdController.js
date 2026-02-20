@@ -4,12 +4,24 @@ const Zone = require("../models/zoneModel");
 
 /* ======================================================
    CREATE HOUSEHOLD (Owner = logged user)
+   Now supports location and ensures userId is saved
 ====================================================== */
 exports.createHousehold = async (req, res) => {
   try {
+    // Debug: show logged user info
+    console.log("Logged user:", req.user);
+
+    const { name, numberOfResidents, propertyType, location } = req.body;
+
+    // Ensure correct userId from token (id or _id)
+    const userId = req.user.id || req.user._id;
+
     const household = new Household({
-      ...req.body,
-      userId: req.user.id   // VERY IMPORTANT → ownership
+      name,
+      numberOfResidents,
+      propertyType,
+      location,
+      userId   // <-- fixed
     });
 
     await household.save();
@@ -29,26 +41,29 @@ exports.createHousehold = async (req, res) => {
 ====================================================== */
 exports.getHouseholds = async (req, res) => {
   try {
-    const { page = 1, limit = 5, search = "" } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const search = req.query.search || "";
 
     const query = {
       name: { $regex: search, $options: "i" }
     };
 
-    // If NOT admin → only own households
     if (req.user.role !== "admin") {
-      query.userId = req.user.id;
+      query.userId = req.user.id || req.user._id; // fallback
     }
 
     const households = await Household.find(query)
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(limit)
+      .sort({ createdAt: -1 });
 
     const total = await Household.countDocuments(query);
 
     res.json({
       total,
-      page: Number(page),
+      page,
+      pages: Math.ceil(total / limit),
       households
     });
 
@@ -56,6 +71,34 @@ exports.getHouseholds = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+  /* ======================================================
+     GET ALL HOUSEHOLDS WITH ZONES (ADMIN)
+  ====================================================== */
+  exports.getAllHouseholdsWithZones = async (req, res) => {
+    try {
+      const households = await Household.find({});
+
+      const householdIds = households.map(h => h._id);
+
+      const zones = await Zone.find({
+        householdId: { $in: householdIds }
+      });
+
+      const result = households.map(h => ({
+        household: h,
+        zones: zones.filter(
+          z => z.householdId.toString() === h._id.toString()
+        )
+      }));
+
+      res.json(result);
+
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  };
 
 
 /* ======================================================
@@ -68,10 +111,9 @@ exports.getHouseholdById = async (req, res) => {
     if (!household)
       return res.status(404).json({ message: "Household not found" });
 
-    // if user is not admin → must be owner
     if (
       req.user.role !== "admin" &&
-      household.userId.toString() !== req.user.id
+      household.userId.toString() !== (req.user.id || req.user._id)
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -85,7 +127,7 @@ exports.getHouseholdById = async (req, res) => {
 
 
 /* ======================================================
-   UPDATE HOUSEHOLD (owner or admin only)
+   UPDATE HOUSEHOLD (owner or admin)
 ====================================================== */
 exports.updateHousehold = async (req, res) => {
   try {
@@ -96,15 +138,17 @@ exports.updateHousehold = async (req, res) => {
 
     if (
       req.user.role !== "admin" &&
-      household.userId.toString() !== req.user.id
+      household.userId.toString() !== (req.user.id || req.user._id)
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    const { name, numberOfResidents, propertyType, location } = req.body;
+
     const updated = await Household.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true }
+      { name, numberOfResidents, propertyType, location },
+      { new: true, runValidators: true }
     );
 
     res.json(updated);
@@ -127,7 +171,7 @@ exports.deleteHousehold = async (req, res) => {
 
     if (
       req.user.role !== "admin" &&
-      household.userId.toString() !== req.user.id
+      household.userId.toString() !== (req.user.id || req.user._id)
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -144,24 +188,37 @@ exports.deleteHousehold = async (req, res) => {
 
 
 /* ======================================================
-   GET MY HOUSEHOLDS WITH ZONES (NESTED DATA)
+   GET MY HOUSEHOLDS
+====================================================== */
+exports.getMyHouseholds = async (req, res) => {
+  try {
+    const households = await Household.find({ userId: req.user.id || req.user._id });
+    res.json(households);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+/* ======================================================
+   GET MY HOUSEHOLDS WITH ZONES (FAST VERSION)
 ====================================================== */
 exports.getMyHouseholdsWithZones = async (req, res) => {
   try {
-    const households = await Household.find({
-      userId: req.user.id
+    const households = await Household.find({ userId: req.user.id || req.user._id });
+
+    const householdIds = households.map(h => h._id);
+
+    const zones = await Zone.find({
+      householdId: { $in: householdIds }
     });
 
-    const result = [];
-
-    for (let h of households) {
-      const zones = await Zone.find({ householdId: h._id });
-
-      result.push({
-        household: h,
-        zones
-      });
-    }
+    const result = households.map(h => ({
+      household: h,
+      zones: zones.filter(
+        z => z.householdId.toString() === h._id.toString()
+      )
+    }));
 
     res.json(result);
 
