@@ -7,7 +7,7 @@ const householdSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    location: {                 // <-- renamed from 'address' to 'location' to match controller
+    location: {                 // <-- matches controller
       type: String
     },
     numberOfResidents: {
@@ -20,10 +20,18 @@ const householdSchema = new mongoose.Schema(
       enum: ["apartment", "house"],
       required: true
     },
-    userId: {                   // <-- MUST include userId to store owner
+    userId: {                   // <-- owner of household
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
+    },
+
+    // ⭐ NEW FIELDS FOR WEATHER-BASED ESTIMATION
+    estimatedMonthlyLiters: {   // total water in liters
+      type: Number
+    },
+    estimatedMonthlyUnits: {    // in cubic meters
+      type: Number
     }
   },
   { timestamps: true }

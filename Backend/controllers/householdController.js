@@ -1,27 +1,34 @@
 const Household = require("../models/householdModel");
 const Zone = require("../models/zoneModel");
+const estimateUsage = require("../utils/estimateUsage"); // ⭐ added
 
 
 /* ======================================================
    CREATE HOUSEHOLD (Owner = logged user)
-   Now supports location and ensures userId is saved
+   Auto calculates estimated water usage using weather API
 ====================================================== */
 exports.createHousehold = async (req, res) => {
   try {
-    // Debug: show logged user info
     console.log("Logged user:", req.user);
 
     const { name, numberOfResidents, propertyType, location } = req.body;
 
-    // Ensure correct userId from token (id or _id)
     const userId = req.user.id || req.user._id;
+
+    // ⭐ calculate estimated usage
+    const usage = await estimateUsage({
+      numberOfPeople: numberOfResidents,
+      location
+    });
 
     const household = new Household({
       name,
       numberOfResidents,
       propertyType,
       location,
-      userId   // <-- fixed
+      userId,
+      estimatedMonthlyLiters: usage.monthlyLiters,   // ⭐ added
+      estimatedMonthlyUnits: usage.monthlyUnits      // ⭐ added
     });
 
     await household.save();
@@ -35,9 +42,6 @@ exports.createHousehold = async (req, res) => {
 
 /* ======================================================
    GET HOUSEHOLDS
-   - Admin → all households
-   - User → only their households
-   - Pagination + search
 ====================================================== */
 exports.getHouseholds = async (req, res) => {
   try {
@@ -50,7 +54,7 @@ exports.getHouseholds = async (req, res) => {
     };
 
     if (req.user.role !== "admin") {
-      query.userId = req.user.id || req.user._id; // fallback
+      query.userId = req.user.id || req.user._id;
     }
 
     const households = await Household.find(query)
@@ -73,32 +77,31 @@ exports.getHouseholds = async (req, res) => {
 };
 
 
-  /* ======================================================
-     GET ALL HOUSEHOLDS WITH ZONES (ADMIN)
-  ====================================================== */
-  exports.getAllHouseholdsWithZones = async (req, res) => {
-    try {
-      const households = await Household.find({});
+/* ======================================================
+   GET ALL HOUSEHOLDS WITH ZONES (ADMIN)
+====================================================== */
+exports.getAllHouseholdsWithZones = async (req, res) => {
+  try {
+    const households = await Household.find({});
+    const householdIds = households.map(h => h._id);
 
-      const householdIds = households.map(h => h._id);
+    const zones = await Zone.find({
+      householdId: { $in: householdIds }
+    });
 
-      const zones = await Zone.find({
-        householdId: { $in: householdIds }
-      });
+    const result = households.map(h => ({
+      household: h,
+      zones: zones.filter(
+        z => z.householdId.toString() === h._id.toString()
+      )
+    }));
 
-      const result = households.map(h => ({
-        household: h,
-        zones: zones.filter(
-          z => z.householdId.toString() === h._id.toString()
-        )
-      }));
+    res.json(result);
 
-      res.json(result);
-
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  };
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 
 /* ======================================================
@@ -128,6 +131,7 @@ exports.getHouseholdById = async (req, res) => {
 
 /* ======================================================
    UPDATE HOUSEHOLD (owner or admin)
+   Recalculates estimated usage if data changed
 ====================================================== */
 exports.updateHousehold = async (req, res) => {
   try {
@@ -145,13 +149,24 @@ exports.updateHousehold = async (req, res) => {
 
     const { name, numberOfResidents, propertyType, location } = req.body;
 
-    const updated = await Household.findByIdAndUpdate(
-      req.params.id,
-      { name, numberOfResidents, propertyType, location },
-      { new: true, runValidators: true }
-    );
+    // update fields
+    household.name = name ?? household.name;
+    household.numberOfResidents = numberOfResidents ?? household.numberOfResidents;
+    household.propertyType = propertyType ?? household.propertyType;
+    household.location = location ?? household.location;
 
-    res.json(updated);
+    // ⭐ recalculate usage
+    const usage = await estimateUsage({
+      numberOfPeople: household.numberOfResidents,
+      location: household.location
+    });
+
+    household.estimatedMonthlyLiters = usage.monthlyLiters;
+    household.estimatedMonthlyUnits = usage.monthlyUnits;
+
+    await household.save();
+
+    res.json(household);
 
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -160,7 +175,7 @@ exports.updateHousehold = async (req, res) => {
 
 
 /* ======================================================
-   DELETE HOUSEHOLD + RELATED ZONES (secure)
+   DELETE HOUSEHOLD + RELATED ZONES
 ====================================================== */
 exports.deleteHousehold = async (req, res) => {
   try {
@@ -192,7 +207,9 @@ exports.deleteHousehold = async (req, res) => {
 ====================================================== */
 exports.getMyHouseholds = async (req, res) => {
   try {
-    const households = await Household.find({ userId: req.user.id || req.user._id });
+    const households = await Household.find({
+      userId: req.user.id || req.user._id
+    });
     res.json(households);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -201,11 +218,13 @@ exports.getMyHouseholds = async (req, res) => {
 
 
 /* ======================================================
-   GET MY HOUSEHOLDS WITH ZONES (FAST VERSION)
+   GET MY HOUSEHOLDS WITH ZONES
 ====================================================== */
 exports.getMyHouseholdsWithZones = async (req, res) => {
   try {
-    const households = await Household.find({ userId: req.user.id || req.user._id });
+    const households = await Household.find({
+      userId: req.user.id || req.user._id
+    });
 
     const householdIds = households.map(h => h._id);
 

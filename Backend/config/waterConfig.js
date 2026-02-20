@@ -1,0 +1,4 @@
+module.exports = {
+  BASELINE_LITERS_PER_PERSON_PER_DAY: 120,
+  DAYS_PER_MONTH: 30
+};
