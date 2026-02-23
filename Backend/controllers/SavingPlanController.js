@@ -1,5 +1,5 @@
 const SavingPlan = require('../models/SavingPlanModel');
-
+const Household =require('../models/householdModel');
 const getAllSavingPlans = async (req, res) => {
     let savingPlans;
     try {
@@ -92,6 +92,35 @@ const deleteSavingPlan = async (req, res) => {
     return res.status(200).json({ message: "Saving plan successfully deleted" });
 };
 
+exports.createSavingPlan = async (req, res) => {
+  try {
+
+    // 1️⃣ Find household of logged user
+    const household = await Household.findOne({
+      userId: req.user.id || req.user._id
+    });
+
+    if (!household) {
+      return res.status(404).json({ message: "No household found for this user" });
+    }
+
+    // 2️⃣ Create saving plan automatically linked
+    const savingPlan = new SavingPlan({
+      householdId: household._id,  //  automatic
+      planType: req.body.planType,
+      householdSize: req.body.householdSize,
+      priorityArea: req.body.priorityArea,
+      customGoalPercentage: req.body.customGoalPercentage,
+      waterSource: req.body.waterSource
+    });
+
+    await savingPlan.save();
+    res.status(201).json(savingPlan);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 
 exports.getAllSavingPlans = getAllSavingPlans;

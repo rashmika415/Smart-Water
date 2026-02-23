@@ -1,15 +1,19 @@
 const express = require("express");
 const router = express.Router();
 
-//Insert model
-const SavingPlan = require("../models/SavingPlanModel");
-//Insert controller
+// ✅ Import auth middleware
+const authMiddleware = require("../middleware/authMiddleware");
+
+// Import controller
 const SavingPlanController = require("../controllers/SavingPlanController");
 
+// Only one POST route for creating saving plan
+router.post("/", authMiddleware, SavingPlanController.createSavingPlan);
+
+// Other CRUD
 router.get("/", SavingPlanController.getAllSavingPlans);
-router.post("/", SavingPlanController.addSavingPlan);
 router.get("/:id", SavingPlanController.getSavingPlanById);
 router.put("/:id", SavingPlanController.updateSavingPlan);
 router.delete("/:id", SavingPlanController.deleteSavingPlan);
-//export
+
 module.exports = router;
