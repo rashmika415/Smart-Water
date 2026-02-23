@@ -1,5 +1,6 @@
 
 const Usage = require("../models/UsageModel");
+const Household = require("../models/householdModel");
 
 /**
  * Create a new usage record
@@ -7,8 +8,20 @@ const Usage = require("../models/UsageModel");
  */
 exports.createUsage = async (req, res) => {
 	try {
+		// Get userId from authenticated user (from JWT token)
+		const userId = req.user.id;
+		
+		// Find the household that belongs to this user
+		const household = await Household.findOne({ userId });
+		
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user. Please create a household first.",
+			});
+		}
+		
 		const {
-			userId,
 			activityType,
 			occurredAt,
 			durationMinutes,
@@ -21,15 +34,15 @@ exports.createUsage = async (req, res) => {
 			notes,
 		} = req.body;
 
-		if (!userId || !activityType) {
+		if (!activityType) {
 			return res.status(400).json({
 				success: false,
-				message: "Missing required fields: userId, activityType",
+				message: "Missing required field: activityType",
 			});
 		}
 
 		const usage = new Usage({
-			userId,
+			householdId: household._id, // from user's household
 			activityType,
 			occurredAt: occurredAt ? new Date(occurredAt) : undefined,
 			durationMinutes,
@@ -67,14 +80,28 @@ exports.createUsage = async (req, res) => {
  */
 exports.getAllUsages = async (req, res) => {
 	try {
-		const { userId, activityType } = req.query;
-		const filter = { deletedAt: null };
+		// Get the household for the authenticated user
+		const userId = req.user.id;
+		const household = await Household.findOne({ userId });
+		
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
+		
+		const { activityType } = req.query;
+		
+		const filter = { 
+			deletedAt: null,
+			householdId: household._id // Only return current user's household records
+		};
 
-		if (userId) filter.userId = userId;
 		if (activityType) filter.activityType = activityType;
 
 		const usages = await Usage.find(filter)
-			.populate("userId", "name email")
+			.populate("householdId", "name location numberOfResidents")
 			.sort({ occurredAt: -1 });
 
 		return res.status(200).json({
@@ -99,9 +126,24 @@ exports.getAllUsages = async (req, res) => {
 exports.getUsageById = async (req, res) => {
 	try {
 		const { id } = req.params;
+		const userId = req.user.id;
+		
+		// Get the household for the authenticated user
+		const household = await Household.findOne({ userId });
+		
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
 
-		const usage = await Usage.findOne({ _id: id, deletedAt: null })
-			.populate("userId", "name email");
+		// Only allow user to get their household's usage records
+		const usage = await Usage.findOne({ 
+			_id: id, 
+			householdId: household._id,
+			deletedAt: null 
+		}).populate("householdId", "name location numberOfResidents");
 
 		if (!usage) {
 			return res.status(404).json({
@@ -131,6 +173,18 @@ exports.getUsageById = async (req, res) => {
 exports.updateUsage = async (req, res) => {
 	try {
 		const { id } = req.params;
+		const userId = req.user.id;
+		
+		// Get the household for the authenticated user
+		const household = await Household.findOne({ userId });
+		
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
+		
 		const {
 			activityType,
 			occurredAt,
@@ -144,8 +198,12 @@ exports.updateUsage = async (req, res) => {
 			notes,
 		} = req.body;
 
-		// Find existing usage record
-		const usage = await Usage.findOne({ _id: id, deletedAt: null });
+		// Find existing usage record - only allow user to update their household's records
+		const usage = await Usage.findOne({ 
+			_id: id, 
+			householdId: household._id,
+			deletedAt: null 
+		});
 
 		if (!usage) {
 			return res.status(404).json({
@@ -190,9 +248,24 @@ exports.updateUsage = async (req, res) => {
 exports.deleteUsage = async (req, res) => {
 	try {
 		const { id } = req.params;
+		const userId = req.user.id;
+		
+		// Get the household for the authenticated user
+		const household = await Household.findOne({ userId });
+		
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
 
-		// Find existing usage record
-		const usage = await Usage.findOne({ _id: id, deletedAt: null });
+		// Find existing usage record - only allow user to delete their household's records
+		const usage = await Usage.findOne({ 
+			_id: id, 
+			householdId: household._id,
+			deletedAt: null 
+		});
 
 		if (!usage) {
 			return res.status(404).json({
