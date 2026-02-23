@@ -25,6 +25,10 @@ const activitySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    staffEmail: {
+      type: String,
+      required: true,
+    },
     notes: {
       type: String,
       default: "",
