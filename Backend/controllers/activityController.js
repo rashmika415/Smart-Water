@@ -1,17 +1,18 @@
 const Activity = require("../models/Activity");
 const mongoose = require("mongoose");
+const sendEmail = require("../services/emailService");
 
 // Create a new activity
- 
+
 exports.createActivity = async (req, res) => {
   try {
-    const { activityType, scheduledDateTime, location, assignedStaff, notes, status } = req.body;
+    const { activityType, scheduledDateTime, location, assignedStaff, staffEmail, notes, status } = req.body;
 
     // Validation
-    if (!activityType || !scheduledDateTime || !location || !assignedStaff) {
+    if (!activityType || !scheduledDateTime || !location || !assignedStaff || !staffEmail) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: activityType, scheduledDateTime, location, assignedStaff",
+        message: "Missing required fields: activityType, scheduledDateTime, location, assignedStaff, staffEmail",
       });
     }
 
@@ -21,11 +22,28 @@ exports.createActivity = async (req, res) => {
       scheduledDateTime: new Date(scheduledDateTime),
       location,
       assignedStaff,
+      staffEmail,
       notes: notes || "",
       status: status || "Pending",
     });
 
     const savedActivity = await activity.save();
+
+    // Send email notification
+    try {
+      await sendEmail(
+        staffEmail,
+        "New Water Maintenance Activity Assigned",
+        `You have been assigned a new activity:
+        
+Activity Type: ${activityType}
+Location: ${location}
+Scheduled Time: ${new Date(scheduledDateTime).toLocaleString()}
+Status: ${status || "Pending"}`
+      );
+    } catch (emailError) {
+      console.error("Failed to send assignment email:", emailError);
+    }
 
     res.status(201).json({
       success: true,
@@ -64,7 +82,7 @@ exports.getActivities = async (req, res) => {
 exports.updateActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    const { activityType, scheduledDateTime, location, assignedStaff, notes, status } = req.body;
+    const { activityType, scheduledDateTime, location, assignedStaff, staffEmail, notes, status } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -78,6 +96,7 @@ exports.updateActivity = async (req, res) => {
     if (scheduledDateTime !== undefined) updateFields.scheduledDateTime = new Date(scheduledDateTime);
     if (location !== undefined) updateFields.location = location;
     if (assignedStaff !== undefined) updateFields.assignedStaff = assignedStaff;
+    if (staffEmail !== undefined) updateFields.staffEmail = staffEmail;
     if (notes !== undefined) updateFields.notes = notes;
     if (status !== undefined) updateFields.status = status;
 
