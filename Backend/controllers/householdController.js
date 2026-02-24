@@ -1,6 +1,7 @@
 const Household = require("../models/householdModel");
 const Zone = require("../models/zoneModel");
-const estimateUsage = require("../utils/estimateUsage"); // ⭐ added
+const estimateUsage = require("../utils/estimateUsage");
+const { PRICE_PER_UNIT } = require("../config/waterConfig");
 const mongoose = require("mongoose");
 
 
@@ -32,11 +33,18 @@ exports.createHousehold = async (req, res) => {
 
     const userId = req.user.id || req.user._id;
 
-    // ⭐ calculate estimated usage
+    const city = location.city.trim();
+
     const usage = await estimateUsage({
       numberOfPeople: numberOfResidents,
-      location
+      location: city
     });
+
+    // ⭐ CALCULATE BILL
+    let predictedBill = (usage.monthlyUnits || 0) * PRICE_PER_UNIT;
+
+    if (usage.zone === "Wet") predictedBill *= 0.9;
+    if (usage.zone === "Dry") predictedBill *= 1.15;
 
     const household = new Household({
       name,
@@ -44,8 +52,10 @@ exports.createHousehold = async (req, res) => {
       propertyType,
       location,
       userId,
-      estimatedMonthlyLiters: usage.monthlyLiters,   // ⭐ added
-      estimatedMonthlyUnits: usage.monthlyUnits      // ⭐ added
+      estimatedMonthlyLiters: isNaN(usage.monthlyLiters) ? 0 : Math.round(usage.monthlyLiters),
+      estimatedMonthlyUnits: isNaN(usage.monthlyUnits) ? 0 : Math.round(usage.monthlyUnits * 100) / 100,
+      climateZone: usage.zone || "Intermediate",
+      predictedBill: isNaN(predictedBill) ? 0 : Math.round(predictedBill * 100) / 100
     });
 
     await household.save();
@@ -174,9 +184,6 @@ exports.updateHousehold = async (req, res) => {
 
     const { name, numberOfResidents, propertyType, location } = req.body;
 
-    // =====================
-    // VALIDATION
-    // =====================
     if (name !== undefined && name.trim() === "") {
       return res.status(400).json({ message: "Household name cannot be empty" });
     }
@@ -190,20 +197,28 @@ exports.updateHousehold = async (req, res) => {
       return res.status(400).json({ message: "Location must include city" });
     }
 
-    // update fields
     household.name = name ?? household.name;
     household.numberOfResidents = numberOfResidents ?? household.numberOfResidents;
     household.propertyType = propertyType ?? household.propertyType;
     household.location = location ?? household.location;
 
-    // ⭐ recalculate usage
+    const city = household.location.city.trim();
     const usage = await estimateUsage({
       numberOfPeople: household.numberOfResidents,
-      location: household.location
+      location: city
     });
 
-    household.estimatedMonthlyLiters = usage.monthlyLiters;
-    household.estimatedMonthlyUnits = usage.monthlyUnits;
+    household.estimatedMonthlyLiters = isNaN(usage.monthlyLiters) ? 0 : Math.round(usage.monthlyLiters);
+    household.estimatedMonthlyUnits = isNaN(usage.monthlyUnits) ? 0 : Math.round(usage.monthlyUnits * 100) / 100;
+    household.climateZone = usage.zone || "Intermediate";
+
+    // ⭐ RECALCULATE BILL
+    let predictedBill = (usage.monthlyUnits || 0) * PRICE_PER_UNIT;
+
+    if (usage.zone === "Wet") predictedBill *= 0.9;
+    if (usage.zone === "Dry") predictedBill *= 1.15;
+
+    household.predictedBill = isNaN(predictedBill) ? 0 : Math.round(predictedBill * 100) / 100;
 
     await household.save();
 
