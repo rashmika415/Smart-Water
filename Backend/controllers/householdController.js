@@ -1,6 +1,7 @@
 const Household = require("../models/householdModel");
 const Zone = require("../models/zoneModel");
 const estimateUsage = require("../utils/estimateUsage"); // ⭐ added
+const mongoose = require("mongoose");
 
 
 /* ======================================================
@@ -12,6 +13,22 @@ exports.createHousehold = async (req, res) => {
     console.log("Logged user:", req.user);
 
     const { name, numberOfResidents, propertyType, location } = req.body;
+
+    // =====================
+    // VALIDATION
+    // =====================
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Household name required" });
+    }
+    if (!numberOfResidents || numberOfResidents <= 0) {
+      return res.status(400).json({ message: "Residents must be greater than 0" });
+    }
+    if (!propertyType || propertyType.trim() === "") {
+      return res.status(400).json({ message: "Property type required" });
+    }
+    if (!location || !location.city || location.city.trim() === "") {
+      return res.status(400).json({ message: "Location must include city" });
+    }
 
     const userId = req.user.id || req.user._id;
 
@@ -109,6 +126,10 @@ exports.getAllHouseholdsWithZones = async (req, res) => {
 ====================================================== */
 exports.getHouseholdById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid household ID" });
+    }
+
     const household = await Household.findById(req.params.id);
 
     if (!household)
@@ -135,6 +156,10 @@ exports.getHouseholdById = async (req, res) => {
 ====================================================== */
 exports.updateHousehold = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid household ID" });
+    }
+
     const household = await Household.findById(req.params.id);
 
     if (!household)
@@ -148,6 +173,22 @@ exports.updateHousehold = async (req, res) => {
     }
 
     const { name, numberOfResidents, propertyType, location } = req.body;
+
+    // =====================
+    // VALIDATION
+    // =====================
+    if (name !== undefined && name.trim() === "") {
+      return res.status(400).json({ message: "Household name cannot be empty" });
+    }
+    if (numberOfResidents !== undefined && numberOfResidents <= 0) {
+      return res.status(400).json({ message: "Residents must be greater than 0" });
+    }
+    if (propertyType !== undefined && propertyType.trim() === "") {
+      return res.status(400).json({ message: "Property type cannot be empty" });
+    }
+    if (location !== undefined && (!location.city || location.city.trim() === "")) {
+      return res.status(400).json({ message: "Location must include city" });
+    }
 
     // update fields
     household.name = name ?? household.name;
@@ -179,6 +220,10 @@ exports.updateHousehold = async (req, res) => {
 ====================================================== */
 exports.deleteHousehold = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid household ID" });
+    }
+
     const household = await Household.findById(req.params.id);
 
     if (!household)

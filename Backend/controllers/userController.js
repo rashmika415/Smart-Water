@@ -1,6 +1,6 @@
 const User = require("../models/userModel");
 const bcrypt = require("bcryptjs");
-
+const mongoose = require("mongoose");
 
 // =============================
 // GET ALL USERS (ADMIN ONLY)
@@ -20,6 +20,10 @@ const getAllUsers = async (req, res) => {
 // =============================
 const getUserById = async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
         const user = await User.findById(req.params.id).select("-password");
 
         if (!user) {
@@ -53,12 +57,29 @@ const getMyProfile = async (req, res) => {
 // =============================
 const updateUser = async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
         const { name, email, password, role } = req.body;
 
         const user = await User.findById(req.params.id);
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
+        }
+
+        // =====================
+        // VALIDATION
+        // =====================
+        if (name !== undefined && name.trim() === "") {
+            return res.status(400).json({ message: "Name cannot be empty" });
+        }
+        if (email !== undefined && !email.includes("@")) {
+            return res.status(400).json({ message: "Invalid email format" });
+        }
+        if (password !== undefined && password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters" });
         }
 
         // update fields
@@ -95,6 +116,10 @@ const updateUser = async (req, res) => {
 // =============================
 const deleteUser = async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
         const user = await User.findById(req.params.id);
 
         if (!user) {
