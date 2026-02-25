@@ -3,11 +3,14 @@ const Zone = require("../models/zoneModel");
 const estimateUsage = require("../utils/estimateUsage");
 const { PRICE_PER_UNIT } = require("../config/waterConfig");
 const mongoose = require("mongoose");
+const User = require("../models/userModel"); // <-- added to fetch user email
+const { sendHouseholdEstimate } = require("../utils/householdEmail"); // <-- email helper
 
 
 /* ======================================================
    CREATE HOUSEHOLD (Owner = logged user)
    Auto calculates estimated water usage using weather API
+   AND sends email to the household creator
 ====================================================== */
 exports.createHousehold = async (req, res) => {
   try {
@@ -32,7 +35,6 @@ exports.createHousehold = async (req, res) => {
     }
 
     const userId = req.user.id || req.user._id;
-
     const city = location.city.trim();
 
     const usage = await estimateUsage({
@@ -42,7 +44,6 @@ exports.createHousehold = async (req, res) => {
 
     // ⭐ CALCULATE BILL
     let predictedBill = (usage.monthlyUnits || 0) * PRICE_PER_UNIT;
-
     if (usage.zone === "Wet") predictedBill *= 0.9;
     if (usage.zone === "Dry") predictedBill *= 1.15;
 
@@ -59,6 +60,20 @@ exports.createHousehold = async (req, res) => {
     });
 
     await household.save();
+
+    // =====================
+    // SEND EMAIL TO CREATOR
+    // =====================
+    try {
+      const user = await User.findById(userId); // get user's email
+      if (user && user.email) {
+        await sendHouseholdEstimate(user.email, household); // send email
+      }
+    } catch (emailErr) {
+      console.error("Error sending household estimate email:", emailErr.message);
+      // don't fail the request if email fails
+    }
+
     res.status(201).json(household);
 
   } catch (err) {
