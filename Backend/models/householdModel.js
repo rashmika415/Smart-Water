@@ -7,9 +7,14 @@ const householdSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    location: {                 // <-- matches controller
-      type: String
+
+    // ✅ CHANGED: location is now an object (matches controller)
+    location: {                 
+      city: { type: String, required: true },
+      state: { type: String },
+      country: { type: String }
     },
+
     numberOfResidents: {
       type: Number,
       required: true,
@@ -32,6 +37,14 @@ const householdSchema = new mongoose.Schema(
     },
     estimatedMonthlyUnits: {    // in cubic meters
       type: Number
+    },
+    climateZone: {              // Wet / Dry / Intermediate
+      type: String,
+      default: "Intermediate"
+    },
+    predictedBill: {            // optional, calculated from estimated units
+      type: Number,
+      default: 0
     }
   },
   { timestamps: true }

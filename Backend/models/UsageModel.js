@@ -2,9 +2,9 @@ const mongoose = require("mongoose");
 
 const UsageSchema = new mongoose.Schema(
 	{
-		userId: {
+		householdId: {
 			type: mongoose.Schema.Types.ObjectId,
-			ref: "User",
+			ref: "Household",
 			required: true,
 			index: true,
 		},
@@ -39,8 +39,8 @@ const UsageSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-UsageSchema.index({ userId: 1, occurredAt: -1 });
-UsageSchema.index({ userId: 1, activityType: 1, occurredAt: -1 });
+UsageSchema.index({ householdId: 1, occurredAt: -1 });
+UsageSchema.index({ householdId: 1, activityType: 1, occurredAt: -1 });
 
 UsageSchema.pre("validate", function () {
 	if (typeof this.liters === "number" && this.liters >= 0) return;
