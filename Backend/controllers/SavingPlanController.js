@@ -5,7 +5,7 @@ const axios = require("axios");
 const getAllSavingPlans = async (req, res) => {
     let savingPlans;
     try {
-        // Populate householdId to get location data
+        // Populate householdId to get location data temporarily
         savingPlans = await SavingPlan.find().populate('householdId');
     } catch (err) {
         console.log(err);
@@ -24,9 +24,12 @@ const getAllSavingPlans = async (req, res) => {
         try {
             const planObj = plan.toObject();
             
+            // Store the household ID separately
+            const householdIdValue = plan.householdId._id.toString();
+            
             // Check if household exists and has location
-            if (plan.householdId && plan.householdId.location) {
-                const locationName = plan.householdId.location;
+            if (plan.householdId && plan.householdId.location && plan.householdId.location.city) {
+                const locationName = plan.householdId.location.city;
                 
                 // 1️⃣ Geocode the location
                 const geoResponse = await axios.get(
@@ -91,12 +94,21 @@ const getAllSavingPlans = async (req, res) => {
                 };
             }
             
+            // Replace the populated householdId with just the ID string
+            planObj.householdId = householdIdValue;
+            
             enhancedSavingPlans.push(planObj);
             
         } catch (err) {
             console.log(`Error fetching weather for plan ${plan._id}:`, err.message);
             // Add plan without weather data
             const planObj = plan.toObject();
+            
+            // Store the household ID separately and replace populated data
+            if (plan.householdId) {
+                planObj.householdId = plan.householdId._id.toString();
+            }
+            
             planObj.weatherData = {
                 error: "Failed to fetch weather data",
                 gardenAdvice: "⚠ Weather service temporarily unavailable"
@@ -111,7 +123,6 @@ const getAllSavingPlans = async (req, res) => {
         savingPlans: enhancedSavingPlans 
     });
 };
-
 //data Insert
 const addSavingPlan = async (req, res) => {
     const { householdId, planType, householdSize, priorityArea, customGoalPercentage, waterSource } = req.body;
@@ -140,6 +151,7 @@ const addSavingPlan = async (req, res) => {
 };
 
 //get by id
+//get by id
 const getSavingPlanById = async (req, res) => {
     const id = req.params.id;
     let savingPlan;
@@ -157,8 +169,11 @@ const getSavingPlanById = async (req, res) => {
     try {
         const planObj = savingPlan.toObject();
         
-        if (savingPlan.householdId && savingPlan.householdId.location) {
-            const locationName = savingPlan.householdId.location;
+        // Store the household ID separately
+        const householdIdValue = savingPlan.householdId._id.toString();
+        
+        if (savingPlan.householdId && savingPlan.householdId.location && savingPlan.householdId.location.city) {
+            const locationName = savingPlan.householdId.location.city;
             
             const geoResponse = await axios.get(
                 "http://api.openweathermap.org/geo/1.0/direct",
@@ -202,12 +217,21 @@ const getSavingPlanById = async (req, res) => {
             }
         }
         
+        // Replace the populated householdId with just the ID string
+        planObj.householdId = householdIdValue;
+        
         return res.status(200).json({ savingPlan: planObj });
     } catch (err) {
         // Return plan without weather data if weather API fails
-        return res.status(200).json({ savingPlan });
+        const planObj = savingPlan.toObject();
+        if (savingPlan.householdId) {
+            planObj.householdId = savingPlan.householdId._id.toString();
+        }
+        return res.status(200).json({ savingPlan: planObj });
     }
 };
+
+//update saving plan
 
 const updateSavingPlan = async (req, res) => {
     const id = req.params.id;
