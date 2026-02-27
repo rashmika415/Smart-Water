@@ -51,6 +51,15 @@ A comprehensive water usage management and monitoring system that helps househol
   - Smart recommendations based on weather conditions
   - Seasonal usage patterns
 
+- **🌍 Carbon Footprint Tracking** (NEW)
+  - Automatic CO2 emission calculation for all water usage
+  - Real-time environmental impact feedback
+  - Carbon equivalents (car km, trees, phone charges)
+  - Activity-based carbon breakdown
+  - Household carbon leaderboards
+  - Daily trend analysis
+  - Educational sustainability metrics
+
 ## 🛠 Tech Stack
 
 ### Backend
@@ -64,11 +73,9 @@ A comprehensive water usage management and monitoring system that helps househol
   - SendGrid integration
 - **HTTP Client:** Axios v1.13.5
 - **Environment Management:** dotenv v17.2.4
-
-### Frontend
-- HTML5
-- CSS3
-- JavaScript (Vanilla)
+- **🌍 Third-Party APIs:**
+  - OpenWeather API (weather data)
+  - CarbonInterface API (carbon footprint calculations)
 
 ### Development Tools
 - **Nodemon** v3.1.11 - Auto-restart during development
@@ -81,6 +88,7 @@ Before you begin, ensure you have the following installed:
 - **npm** or **yarn** package manager
 
 ### Required API Keys
+- CarbonInterface API key (for carbon footprint calculations - optional, has local fallback)
 - MongoDB connection URI
 - SendGrid API key (for email notifications)
 - Weather API key (for weather integration)
@@ -248,6 +256,15 @@ Smart-Water/
 - `POST /usage` - Record usage
 - `GET /usage/history` - Get usage history
 - `GET /usage/estimate` - Get usage estimate
+- `GET /usage/:id` - Get usage by ID
+- `PUT /usage/:id` - Update usage
+- `DELETE /usage/:id` - Delete usage
+
+### 🌍 Carbon Footprint (`/usage/carbon-*`)
+- `GET /usage/carbon-stats` - Get carbon statistics
+- `GET /usage/carbon-by-activity` - Carbon breakdown by activity
+- `GET /usage/carbon-leaderboard` - Household carbon leaderboard
+- `GET /usage/carbon-trend` - Daily carbon trend analysis
 
 ### Saving Plans (`/SavingPlan`)
 - `GET /SavingPlan` - Get all saving plans
@@ -357,9 +374,6 @@ Contributions are welcome! Please follow these steps:
 - Add comments for complex logic
 - Update documentation as needed
 
-## 📄 License
-
-This project is licensed under the ISC License.
 
 ## 📞 Support & Contact
 
