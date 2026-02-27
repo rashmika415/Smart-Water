@@ -8,7 +8,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const SavingPlanController = require("../controllers/SavingPlanController");
 
 // Only one POST route for creating saving plan
-router.post("/", authMiddleware, SavingPlanController.createSavingPlan);
+router.post("/", authMiddleware, SavingPlanController.addSavingPlan);
 
 // Other CRUD
 router.get("/", SavingPlanController.getAllSavingPlans);

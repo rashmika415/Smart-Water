@@ -23,9 +23,34 @@ const getAllSavingPlans = async (req, res) => {
     for (const plan of savingPlans) {
         try {
             const planObj = plan.toObject();
+
+            // Calculate water saving
+if (
+    planObj.totalWaterUsagePerDay !== undefined &&
+    planObj.targetReductionPercentage !== undefined
+) {
+
+    const waterToSave =
+        (planObj.totalWaterUsagePerDay * planObj.targetReductionPercentage) / 100;
+
+    const targetDailyUsage =
+        planObj.totalWaterUsagePerDay - waterToSave;
+
+    planObj.savingCalculation = {
+        totalWaterUsagePerDay: planObj.totalWaterUsagePerDay,
+        targetReductionPercentage: planObj.targetReductionPercentage,
+        waterToSaveLiters: waterToSave,
+        targetDailyUsage: targetDailyUsage
+    };
+}
             
             // Store the household ID separately
             const householdIdValue = plan.householdId._id.toString();
+
+            // ensure customGoalPercentage null for non-custom plans
+            if (planObj.planType !== "Custom") {
+                planObj.customGoalPercentage = null;
+            }
             
             // Check if household exists and has location
             if (plan.householdId && plan.householdId.location && plan.householdId.location.city) {
@@ -125,32 +150,121 @@ const getAllSavingPlans = async (req, res) => {
 };
 //data Insert
 const addSavingPlan = async (req, res) => {
-    const { householdId, planType, householdSize, priorityArea, customGoalPercentage, waterSource } = req.body;
-    let savingPlan;
     try {
-        savingPlan = new SavingPlan({
-            householdId,
+        // 1️⃣ Find household using logged-in user
+        const household = await Household.findOne({
+            userId: req.user.id || req.user._id
+        });
+
+        if (!household) {
+            return res.status(404).json({
+                success: false,
+                message: "No household found for this user"
+            });
+        }
+
+        const {
             planType,
             householdSize,
+            totalWaterUsagePerDay,
             priorityArea,
             customGoalPercentage,
             waterSource
+        } = req.body;
+
+        // 2️⃣ Validate required fields
+        if (!planType || !householdSize || !priorityArea || !waterSource) {
+            return res.status(400).json({
+                success: false,
+                message: "All required fields must be provided"
+            });
+        }
+
+        // 3️⃣ Validate planType
+        const allowedPlanTypes = ["Basic", "Advanced", "Custom"];
+        if (!allowedPlanTypes.includes(planType)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid plan type. Allowed types: Basic, Advanced, Custom"
+            });
+        }
+
+        let targetReductionPercentage = 0;
+
+        // 4️⃣ Business Logic
+        switch (planType) {
+
+            case "Basic":
+                targetReductionPercentage = 10;
+                break;
+
+            case "Advanced":
+                targetReductionPercentage = 20;
+                break;
+
+            case "Custom":
+
+                if (!customGoalPercentage) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Custom goal percentage is required for Custom plan"
+                    });
+                }
+
+                if (customGoalPercentage < 1 || customGoalPercentage > 100) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Custom goal must be between 1 and 100"
+                    });
+                }
+
+                targetReductionPercentage = customGoalPercentage;
+                break;
+        }
+
+        // 5️⃣ Optional: Prevent multiple active plans
+        const existingPlan = await SavingPlan.findOne({
+            householdId: household._id,
+            status: "Active"
         });
-        await savingPlan.save();
-    } catch (err) {
-        console.log(err);
-        return res.status(500).json({ message: "Unable to add saving plan" });
-    }
-    //not insert saving plan
-    if (!savingPlan) {
-        return res.status(404).json({ message: "Unable to add" });
-    }
 
-    //insert saving plan successfully
-    return res.status(200).json({ savingPlan });
+        if (existingPlan) {
+            return res.status(400).json({
+                success: false,
+                message: "An active saving plan already exists"
+            });
+        }
+
+        // 6️⃣ Create new saving plan
+        const newSavingPlan = new SavingPlan({
+            householdId: household._id,
+            planType,
+            householdSize,
+            totalWaterUsagePerDay,
+            priorityArea,
+            waterSource,
+            customGoalPercentage: planType === "Custom" ? customGoalPercentage : null,
+            targetReductionPercentage,
+            status: "Active",
+            createdAt: new Date()
+        });
+
+        await newSavingPlan.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Saving plan created successfully",
+            data: newSavingPlan
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Server Error",
+            error: error.message
+        });
+    }
 };
-
-//get by id
 //get by id
 const getSavingPlanById = async (req, res) => {
     const id = req.params.id;
@@ -185,6 +299,9 @@ const getSavingPlanById = async (req, res) => {
                     }
                 }
             );
+            if (planObj.planType !== "Custom") {
+    planObj.customGoalPercentage = null;
+}
 
             if (geoResponse.data.length > 0) {
                 const { lat, lon } = geoResponse.data[0];
@@ -235,13 +352,14 @@ const getSavingPlanById = async (req, res) => {
 
 const updateSavingPlan = async (req, res) => {
     const id = req.params.id;
-    const { householdId, planType, householdSize, priorityArea, customGoalPercentage, waterSource } = req.body;
+    const { householdId, planType, householdSize,totalWaterUsagePerDay, priorityArea, customGoalPercentage, waterSource } = req.body;
     let savingPlan;
     try {
         savingPlan = await SavingPlan.findByIdAndUpdate(id, {
             householdId,
             planType,
             householdSize,
+            totalWaterUsagePerDay,
             priorityArea,
             customGoalPercentage,
             waterSource
@@ -256,6 +374,7 @@ const updateSavingPlan = async (req, res) => {
     return res.status(200).json({ savingPlan });
 };
 
+//delete saving plan
 const deleteSavingPlan = async (req, res) => {
     const id = req.params.id;
     let savingPlan;
@@ -271,7 +390,7 @@ const deleteSavingPlan = async (req, res) => {
     return res.status(200).json({ message: "Saving plan successfully deleted" });
 };
 
-exports.createSavingPlan = async (req, res) => {
+exports.addSavingPlan = async (req, res) => {
     try {
         // 1️⃣ Find household of logged user
         const household = await Household.findOne({
@@ -287,6 +406,7 @@ exports.createSavingPlan = async (req, res) => {
             householdId: household._id,
             planType: req.body.planType,
             householdSize: req.body.householdSize,
+            totalWaterUsagePerDay: req.body.totalWaterUsagePerDay,
             priorityArea: req.body.priorityArea,
             customGoalPercentage: req.body.customGoalPercentage,
             waterSource: req.body.waterSource
@@ -297,6 +417,49 @@ exports.createSavingPlan = async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+};
+const getSavingCalculation = async (req, res) => {
+    try {
+
+        // 1️⃣ Find logged user's household
+        const household = await Household.findOne({
+            userId: req.user.id || req.user._id
+        });
+
+        if (!household) {
+            return res.status(404).json({ message: "Household not found" });
+        }
+
+        // 2️⃣ Find saving plan
+        const savingPlan = await SavingPlan.findOne({
+            householdId: household._id
+        });
+
+        if (!savingPlan) {
+            return res.status(404).json({ message: "Saving plan not found" });
+        }
+
+        const baselineUsage = savingPlan.totalWaterUsagePerDay;
+        const targetPercent = savingPlan.targetReductionPercentage;
+
+        // 3️⃣ Calculate water to save
+        const waterToSave =
+            (baselineUsage * targetPercent) / 100;
+
+        // 4️⃣ Calculate target daily usage
+        const targetUsage =
+            baselineUsage - waterToSave;
+
+        return res.status(200).json({
+            totalWaterUsagePerDay: baselineUsage,
+            targetReductionPercentage: targetPercent,
+            waterToSaveLiters: waterToSave,
+            targetDailyUsage: targetUsage
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -378,3 +541,4 @@ exports.addSavingPlan = addSavingPlan;
 exports.getSavingPlanById = getSavingPlanById;
 exports.deleteSavingPlan = deleteSavingPlan;
 exports.updateSavingPlan = updateSavingPlan;
+exports.getSavingCalculation = getSavingCalculation;
