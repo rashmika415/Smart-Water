@@ -1,4 +1,4 @@
-const sendEmail = require('./services/emailService');
+const sendEmail = require('../../services/emailService');
 
 const test = async () => {
     console.log('Testing Nodemailer Service...');
