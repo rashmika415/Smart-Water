@@ -77,34 +77,81 @@ const getAllSavingPlans = async (req, res) => {
 const addSavingPlan = async (req, res) => {
   try {
     const household = await Household.findOne({ userId: req.user.id || req.user._id });
+    if (!household) {
+      return res.status(404).json({ message: "No household found for this user" });
+    }
 
-    if (!household) return res.status(404).json({ message: "No household found for this user" });
+    const {
+      planType,
+      householdSize,
+      totalWaterUsagePerDay,
+      priorityArea,
+      customGoalPercentage,
+      waterSource
+    } = req.body;
 
-    const { planType, householdSize, totalWaterUsagePerDay, priorityArea, customGoalPercentage, waterSource } = req.body;
-
-    if (!planType || !householdSize || !priorityArea || !waterSource) {
+    // Required fields
+    if (!planType || !householdSize || !totalWaterUsagePerDay || !priorityArea || !waterSource) {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
+    // Plan type validation
     const allowedPlanTypes = ["Basic", "Advanced", "Custom"];
     if (!allowedPlanTypes.includes(planType)) {
       return res.status(400).json({ message: "Invalid plan type" });
     }
 
+    // Numeric validation
+    if (isNaN(householdSize) || householdSize < 1) {
+      return res.status(400).json({
+        message: "Household size must be a number greater than or equal to 1"
+      });
+    }
+
+    if (isNaN(totalWaterUsagePerDay) || totalWaterUsagePerDay < 0) {
+      return res.status(400).json({
+        message: "Total water usage must be a positive number"
+      });
+    }
+
     let targetReductionPercentage = 0;
+
     switch (planType) {
-      case "Basic": targetReductionPercentage = 10; break;
-      case "Advanced": targetReductionPercentage = 20; break;
+      case "Basic":
+        targetReductionPercentage = 10;
+        break;
+
+      case "Advanced":
+        targetReductionPercentage = 20;
+        break;
+
       case "Custom":
-        if (!customGoalPercentage || customGoalPercentage < 1 || customGoalPercentage > 100) {
-          return res.status(400).json({ message: "Custom goal must be between 1 and 100" });
+        if (
+          !customGoalPercentage ||
+          isNaN(customGoalPercentage) ||
+          customGoalPercentage < 1 ||
+          customGoalPercentage > 100
+        ) {
+          return res.status(400).json({
+            message: "Custom goal percentage must be between 1 and 100"
+          });
         }
+
         targetReductionPercentage = customGoalPercentage;
         break;
     }
 
-    const existingPlan = await SavingPlan.findOne({ householdId: household._id, status: "Active" });
-    if (existingPlan) return res.status(400).json({ message: "An active saving plan already exists" });
+    // Only one active plan per household
+    const existingPlan = await SavingPlan.findOne({
+      householdId: household._id,
+      status: "Active"
+    });
+
+    if (existingPlan) {
+      return res.status(400).json({
+        message: "An active saving plan already exists"
+      });
+    }
 
     const newSavingPlan = new SavingPlan({
       householdId: household._id,
@@ -120,10 +167,18 @@ const addSavingPlan = async (req, res) => {
     });
 
     await newSavingPlan.save();
-    return res.status(201).json({ success: true, message: "Saving plan created successfully", data: newSavingPlan });
+
+    return res.status(201).json({
+      success: true,
+      message: "Saving plan created successfully",
+      data: newSavingPlan
+    });
 
   } catch (error) {
-    return res.status(500).json({ message: "Server Error", error: error.message });
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message
+    });
   }
 };
 
@@ -174,23 +229,72 @@ const getSavingPlanById = async (req, res) => {
 // UPDATE saving plan
 const updateSavingPlan = async (req, res) => {
   const id = req.params.id;
-  const { householdId, planType, householdSize, totalWaterUsagePerDay, priorityArea, customGoalPercentage, waterSource } = req.body;
 
-  let savingPlan;
+  const {
+    planType,
+    householdSize,
+    totalWaterUsagePerDay,
+    priorityArea,
+    customGoalPercentage,
+    waterSource
+  } = req.body;
+
+  const allowedPlanTypes = ["Basic", "Advanced", "Custom"];
+
+  if (planType && !allowedPlanTypes.includes(planType)) {
+    return res.status(400).json({ message: "Invalid plan type" });
+  }
+
+  if (householdSize && (isNaN(householdSize) || householdSize < 1)) {
+    return res.status(400).json({
+      message: "Household size must be greater than or equal to 1"
+    });
+  }
+
+  if (totalWaterUsagePerDay && (isNaN(totalWaterUsagePerDay) || totalWaterUsagePerDay < 0)) {
+    return res.status(400).json({
+      message: "Total water usage must be a positive number"
+    });
+  }
+
+  if (
+    planType === "Custom" &&
+    (
+      !customGoalPercentage ||
+      isNaN(customGoalPercentage) ||
+      customGoalPercentage < 1 ||
+      customGoalPercentage > 100
+    )
+  ) {
+    return res.status(400).json({
+      message: "Custom goal percentage must be between 1 and 100"
+    });
+  }
+
   try {
-    savingPlan = await SavingPlan.findByIdAndUpdate(
+    const updatedPlan = await SavingPlan.findByIdAndUpdate(
       id,
-      { householdId, planType, householdSize, totalWaterUsagePerDay, priorityArea, customGoalPercentage, waterSource },
+      {
+        planType,
+        householdSize,
+        totalWaterUsagePerDay,
+        priorityArea,
+        customGoalPercentage,
+        waterSource
+      },
       { new: true }
     );
+
+    if (!updatedPlan) {
+      return res.status(404).json({ message: "Saving plan not found" });
+    }
+
+    return res.status(200).json({ savingPlan: updatedPlan });
+
   } catch (err) {
     return res.status(500).json({ message: "Unable to update" });
   }
-
-  if (!savingPlan) return res.status(404).json({ message: "Unable to update" });
-  return res.status(200).json({ savingPlan });
 };
-
 // DELETE saving plan
 const deleteSavingPlan = async (req, res) => {
   const id = req.params.id;
