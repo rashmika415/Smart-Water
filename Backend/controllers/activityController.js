@@ -1,19 +1,30 @@
 const Activity = require("../models/Activity");
 const mongoose = require("mongoose");
-const sendEmail = require("../services/emailService");
-const getEmailTemplate = require("../services/emailTemplate");
+const sendEmail = require("../services/activityEmailService");
+const getEmailTemplate = require("../services/activityEmailTemplate");
 
 // Create a new activity
-
 exports.createActivity = async (req, res) => {
   try {
     const { activityType, scheduledDate, scheduledTime, location, assignedStaff, staffEmail, notes, status } = req.body;
 
-    // Validation
+    // Validation: Required fields
     if (!activityType || !scheduledDate || !scheduledTime || !location || !assignedStaff || !staffEmail) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields: activityType, scheduledDate, scheduledTime, location, assignedStaff, staffEmail",
+      });
+    }
+
+    // Validation: Prevent past dates
+    const inputDate = new Date(scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time for date-only comparison
+
+    if (inputDate < today) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot schedule an activity on a past date.",
       });
     }
 
@@ -39,8 +50,8 @@ exports.createActivity = async (req, res) => {
         [
           { label: "Activity Type", value: activityType },
           { label: "Location", value: location },
-          { label: "Scheduled Date", value: scheduledDate },
-          { label: "Scheduled Time", value: scheduledTime },
+          { label: "Date", value: scheduledDate },
+          { label: "Time", value: scheduledTime },
           { label: "Status", value: status || "Pending" }
         ],
         "success"
@@ -89,6 +100,41 @@ exports.getActivities = async (req, res) => {
   }
 };
 
+// Get a single activity by ID
+exports.getActivityById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity ID",
+      });
+    }
+
+    const activity = await Activity.findById(id);
+
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: "Activity not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: activity,
+    });
+  } catch (error) {
+    console.error("Error fetching activity:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching activity",
+      error: error.message,
+    });
+  }
+};
+
 // Update an existing activity by ID
 exports.updateActivity = async (req, res) => {
   try {
@@ -112,6 +158,20 @@ exports.updateActivity = async (req, res) => {
     if (notes !== undefined) updateFields.notes = notes;
     if (status !== undefined) updateFields.status = status;
 
+    // Validation: Prevent past dates if scheduledDate is being updated
+    if (scheduledDate) {
+      const inputDate = new Date(scheduledDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (inputDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot update an activity to a past date.",
+        });
+      }
+    }
+
     const updatedActivity = await Activity.findByIdAndUpdate(
       id,
       { $set: updateFields },
@@ -124,12 +184,6 @@ exports.updateActivity = async (req, res) => {
         message: "Activity not found",
       });
     }
-
-    res.status(200).json({
-      success: true,
-      message: "Activity updated successfully",
-      data: updatedActivity,
-    });
 
     // Send update email notification
     try {
@@ -156,6 +210,12 @@ exports.updateActivity = async (req, res) => {
     } catch (emailError) {
       console.error("Failed to send update email:", emailError);
     }
+
+    res.status(200).json({
+      success: true,
+      message: "Activity updated successfully",
+      data: updatedActivity,
+    });
   } catch (error) {
     console.error("Error updating activity:", error);
     res.status(500).json({
@@ -187,13 +247,7 @@ exports.deleteActivity = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Activity deleted successfully",
-      data: deletedActivity,
-    });
-
-    // Send deletion email notification
+    // Send cancellation email notification
     try {
       const emailHtml = getEmailTemplate(
         "Activity Cancelled",
@@ -216,6 +270,12 @@ exports.deleteActivity = async (req, res) => {
     } catch (emailError) {
       console.error("Failed to send deletion email:", emailError);
     }
+
+    res.status(200).json({
+      success: true,
+      message: "Activity deleted successfully",
+      data: deletedActivity,
+    });
   } catch (error) {
     console.error("Error deleting activity:", error);
     res.status(500).json({

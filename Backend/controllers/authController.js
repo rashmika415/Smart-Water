@@ -2,9 +2,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 
-// =============================
+
 // REGISTER USER
-// =============================
+
 const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
