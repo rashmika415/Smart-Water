@@ -4,17 +4,33 @@ const router = express.Router();
 // ✅ Import auth middleware
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Import controller
-const SavingPlanController = require("../controllers/SavingPlanController");
+// Import controller functions individually
+const {
+  addSavingPlan,
+  getAllSavingPlans,
+  getSavingPlanById,
+  updateSavingPlan,
+  deleteSavingPlan,
+  getSavingCalculation
+} = require("../controllers/SavingPlanController");
 
-// Only one POST route for creating saving plan
-router.post("/", authMiddleware, SavingPlanController.createSavingPlan);
+// Routes
 
-// Other CRUD
-router.get("/", SavingPlanController.getAllSavingPlans);
-router.get("/weather/advice", authMiddleware, SavingPlanController.getWeatherAdvice);
-router.get("/:id", SavingPlanController.getSavingPlanById);
-router.put("/:id", SavingPlanController.updateSavingPlan);
-router.delete("/:id", SavingPlanController.deleteSavingPlan);
+// Create a new saving plan
+router.post("/", authMiddleware, addSavingPlan); 
+// Get all saving plans
+router.get("/", getAllSavingPlans);
+
+// Get water saving calculation for logged-in user
+router.get("/calculation", authMiddleware, getSavingCalculation);
+
+// Get a plan by ID
+router.get("/:id", getSavingPlanById);
+
+// Update a plan
+router.put("/:id", updateSavingPlan);
+
+// Delete a plan
+router.delete("/:id", deleteSavingPlan);
 
 module.exports = router;
