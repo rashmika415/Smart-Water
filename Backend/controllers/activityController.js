@@ -1,7 +1,7 @@
 const Activity = require("../models/Activity");
 const mongoose = require("mongoose");
-const sendEmail = require("../services/emailService");
-const getEmailTemplate = require("../services/emailTemplate");
+const sendEmail = require("../services/activityEmailService");
+const getEmailTemplate = require("../services/activityEmailTemplate");
 
 // Create a new activity
 
