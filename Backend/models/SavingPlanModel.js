@@ -42,6 +42,15 @@ const SavingPlanSchema = new mongoose.Schema({
     type: String,  //data type
     enum: ["Municipal", "Well", "Rainwater", "Mixed"],
     required: true  //validation
+  },
+  status: {
+    type: String,
+    enum: ["Active", "Inactive", "Completed"],
+    default: "Active"
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
