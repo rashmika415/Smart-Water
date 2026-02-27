@@ -14,7 +14,7 @@ const { sendHouseholdEstimate } = require("../utils/householdEmail"); // <-- ema
 ====================================================== */
 exports.createHousehold = async (req, res) => {
   try {
-    console.log("Logged user:", req.user);
+    console.log("Logged users succesfully:", req.user);
 
     const { name, numberOfResidents, propertyType, location } = req.body;
 
