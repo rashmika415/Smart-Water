@@ -8,11 +8,23 @@ exports.createActivity = async (req, res) => {
   try {
     const { activityType, scheduledDate, scheduledTime, location, assignedStaff, staffEmail, notes, status } = req.body;
 
-    // Validation
+    // Validation: Required fields
     if (!activityType || !scheduledDate || !scheduledTime || !location || !assignedStaff || !staffEmail) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields: activityType, scheduledDate, scheduledTime, location, assignedStaff, staffEmail",
+      });
+    }
+
+    // Validation: Prevent past dates
+    const inputDate = new Date(scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time for date-only comparison
+
+    if (inputDate < today) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot schedule an activity on a past date.",
       });
     }
 
@@ -145,6 +157,20 @@ exports.updateActivity = async (req, res) => {
     if (staffEmail !== undefined) updateFields.staffEmail = staffEmail;
     if (notes !== undefined) updateFields.notes = notes;
     if (status !== undefined) updateFields.status = status;
+
+    // Validation: Prevent past dates if scheduledDate is being updated
+    if (scheduledDate) {
+      const inputDate = new Date(scheduledDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (inputDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot update an activity to a past date.",
+        });
+      }
+    }
 
     const updatedActivity = await Activity.findByIdAndUpdate(
       id,
