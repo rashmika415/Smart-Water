@@ -5,21 +5,18 @@ const activitySchema = new mongoose.Schema(
     activityType: {
       type: String,
       required: true,
-      enum: [
-        "Water Tank Cleaning",
-        "Pipe Inspection",
-        "Leak Repair",
-        "Filter Replacement",
-      ],
     },
-    scheduledDateTime: {
-      type: Date,
+    scheduledDate: {
+      type: String,
+      required: true,
+    },
+    scheduledTime: {
+      type: String,
       required: true,
     },
     location: {
       type: String,
       required: true,
-      enum: ["Kitchen", "Bathroom", "Roof Tank", "Garden"],
     },
     assignedStaff: {
       type: String,
