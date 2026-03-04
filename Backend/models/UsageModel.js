@@ -88,7 +88,7 @@ UsageSchema.pre("validate", function () {
 });
 
 // 🌍 Pre-save hook: Calculate carbon footprint automatically
-UsageSchema.pre("save", async function (next) {
+UsageSchema.pre("save", async function () {
 	try {
 		// Only calculate if liters changed or carbon not yet calculated
 		if (this.isModified("liters") || !this.carbonFootprint?.carbonKg) {
@@ -111,11 +111,10 @@ UsageSchema.pre("save", async function (next) {
 				};
 			}
 		}
-		next();
 	} catch (error) {
 		console.error("Error calculating carbon footprint:", error);
 		// Don't fail the save if carbon calculation fails
-		next();
+		// Just continue without carbon data
 	}
 });
 
