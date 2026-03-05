@@ -293,28 +293,19 @@ exports.getMyHouseholds = async (req, res) => {
 
 
 /* ======================================================
-   GET MY HOUSEHOLDS WITH ZONES
+   /* ======================================================
+   GET MY HOUSEHOLDS WITH ZONES (FIXED)
+   Returns households of logged-in user with their zones
 ====================================================== */
 exports.getMyHouseholdsWithZones = async (req, res) => {
   try {
+    // Fetch households for the logged-in user and populate zones
     const households = await Household.find({
       userId: req.user.id || req.user._id
-    });
+    }).populate('zones'); // <-- populate zones field
 
-    const householdIds = households.map(h => h._id);
-
-    const zones = await Zone.find({
-      householdId: { $in: householdIds }
-    });
-
-    const result = households.map(h => ({
-      household: h,
-      zones: zones.filter(
-        z => z.householdId.toString() === h._id.toString()
-      )
-    }));
-
-    res.json(result);
+    // Respond with households including zones
+    res.json(households);
 
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -45,7 +45,10 @@ const householdSchema = new mongoose.Schema(
     predictedBill: {            // optional, calculated from estimated units
       type: Number,
       default: 0
-    }
+    },
+
+    // ✅ NEW: link zones
+    zones: [{ type: mongoose.Schema.Types.ObjectId, ref: "Zone" }]
   },
   { timestamps: true }
 );
