@@ -1,0 +1,134 @@
+{
+  "info": {
+    "_postman_id": "water-saving-plan-2026",
+    "name": "Smart Water - Saving Plan Management",
+    "description": "API collection for Water Saving Plan feature",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Saving Plan - CRUD",
+      "description": "Operations for managing water saving plans",
+      "item": [
+        {
+          "name": "Create Saving Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planName\": \"Reduce Shower Water\",\n  \"totalWaterUsagePerDay\": 500,\n  \"targetReductionPercentage\": 20,\n  \"notes\": \"Trying to reduce shower usage\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/saving-plan",
+              "host": ["{{base_url}}"],
+              "path": ["saving-plan"]
+            },
+            "description": "Create a new water saving plan"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Saving Plans",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/saving-plan",
+              "host": ["{{base_url}}"],
+              "path": ["saving-plan"]
+            },
+            "description": "Retrieve all saving plans created by the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Saving Plan By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/saving-plan/:id",
+              "host": ["{{base_url}}"],
+              "path": ["saving-plan", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "saving-plan-id"
+                }
+              ]
+            },
+            "description": "Retrieve a specific saving plan"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Saving Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetReductionPercentage\": 25,\n  \"notes\": \"Updated reduction target\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/saving-plan/:id",
+              "host": ["{{base_url}}"],
+              "path": ["saving-plan", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "saving-plan-id"
+                }
+              ]
+            },
+            "description": "Update an existing saving plan"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Saving Plan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/saving-plan/:id",
+              "host": ["{{base_url}}"],
+              "path": ["saving-plan", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "saving-plan-id"
+                }
+              ]
+            },
+            "description": "Delete a saving plan"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "auth_token",
+      "value": ""
+    }
+  ]
+}

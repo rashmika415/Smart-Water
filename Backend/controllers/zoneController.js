@@ -1,7 +1,6 @@
 const Zone = require("../models/zoneModel");
 const Household = require("../models/householdModel");
 
-
 // ===============================
 // CREATE zone inside household
 // ===============================
@@ -27,14 +26,17 @@ exports.createZone = async (req, res) => {
     });
 
     await zone.save();
+
+    // ✅ NEW: link zone to household without changing other logic
+    household.zones.push(zone._id);
+    await household.save();
+
     res.status(201).json(zone);
 
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
-
 
 // ===============================
 // GET zones of household
@@ -61,8 +63,6 @@ exports.getZonesByHousehold = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
 
 // ===============================
 // UPDATE zone
@@ -95,8 +95,6 @@ exports.updateZone = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
 
 // ===============================
 // DELETE zone

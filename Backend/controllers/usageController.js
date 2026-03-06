@@ -1,7 +1,17 @@
 
 const Usage = require("../models/UsageModel");
+const Household = require("../models/householdModel");
 const mongoose = require("mongoose");
-const { aggregateCarbonFootprint } = require("../services/carbonService");
+const {
+	aggregateCarbonFootprint,
+	calculateWaterCarbon,
+	isHeatedActivity,
+} = require("../services/carbonService");
+const {
+	buildUsageFilter,
+	getPaginationParams,
+	getSortParams,
+} = require("../utils/usageHelpers");
 
 /**
  * Create a new usage record
@@ -9,8 +19,19 @@ const { aggregateCarbonFootprint } = require("../services/carbonService");
  */
 exports.createUsage = async (req, res) => {
 	try {
+		// 🔐 Get userId from JWT token (set by verifyToken middleware)
+		const userId = req.user.id;
+
+		// 🏠 Find the household owned by this user
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user. Please create a household first.",
+			});
+		}
+
 		const {
-			userId,
 			activityType,
 			occurredAt,
 			durationMinutes,
@@ -23,15 +44,15 @@ exports.createUsage = async (req, res) => {
 			notes,
 		} = req.body;
 
-		if (!userId || !activityType) {
+		if (!activityType) {
 			return res.status(400).json({
 				success: false,
-				message: "Missing required fields: userId, activityType",
+				message: "Missing required field: activityType",
 			});
 		}
 
 		const usage = new Usage({
-			userId,
+			householdId: household._id,  // ✅ Automatically from token
 			activityType,
 			occurredAt: occurredAt ? new Date(occurredAt) : undefined,
 			durationMinutes,
@@ -45,15 +66,32 @@ exports.createUsage = async (req, res) => {
 		});
 
 		const savedUsage = await usage.save();
+		const responseData = {
+			_id: savedUsage._id,
+			householdId: savedUsage.householdId,
+			activityType: savedUsage.activityType,
+			liters: savedUsage.liters,
+			carbonFootprint: savedUsage.carbonFootprint
+				? {
+						carbonKg: savedUsage.carbonFootprint.carbonKg,
+						energyKwh: savedUsage.carbonFootprint.energyKwh,
+						equivalents: {
+							carKm: savedUsage.carbonFootprint.equivalents?.carKm ?? 0,
+							description: savedUsage.carbonFootprint.equivalents?.description || "",
+						},
+				  }
+				: null,
+			occurredAt: savedUsage.occurredAt,
+			createdAt: savedUsage.createdAt,
+		};
 
 		return res.status(201).json({
 			success: true,
 			message: "Usage created successfully",
-			data: savedUsage,
+			data: responseData,
 			carbonImpact: savedUsage.carbonFootprint
 				? {
 						carbonKg: savedUsage.carbonFootprint.carbonKg,
-						equivalents: savedUsage.carbonFootprint.equivalents,
 						message: `🌍 ${savedUsage.carbonFootprint.equivalents.description}`,
 				  }
 				: null,
@@ -71,25 +109,69 @@ exports.createUsage = async (req, res) => {
 /**
  * Get all usage records
  * @route GET /api/usage
- * @query userId - Optional filter by user ID
  * @query activityType - Optional filter by activity type
  */
 exports.getAllUsages = async (req, res) => {
 	try {
-		const { userId, activityType } = req.query;
-		const filter = { deletedAt: null };
+		// 🔐 Get userId from JWT token
+		const userId = req.user.id;
 
-		if (userId) filter.userId = userId;
-		if (activityType) filter.activityType = activityType;
+		// 🏠 Find the household owned by this user
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
 
-		const usages = await Usage.find(filter)
-			.populate("userId", "name email")
-			.sort({ occurredAt: -1 });
+		const filter = buildUsageFilter(req.query, household._id);
+		const sort = getSortParams(req.query.sort);
+		const { page, limit, skip } = getPaginationParams(req.query);
+
+		const [usages, total] = await Promise.all([
+			Usage.find(filter).sort(sort).skip(skip).limit(limit),
+			Usage.countDocuments(filter),
+		]);
+
+		const responseData = usages.map((usage) => ({
+			_id: usage._id,
+			householdId: usage.householdId,
+			activityType: usage.activityType,
+			liters: usage.liters,
+			durationMinutes: usage.durationMinutes,
+			flowRateLpm: usage.flowRateLpm,
+			count: usage.count,
+			litersPerUnit: usage.litersPerUnit,
+			carbonFootprint: usage.carbonFootprint
+				? {
+						carbonKg: usage.carbonFootprint.carbonKg,
+						energyKwh: usage.carbonFootprint.energyKwh,
+						breakdown: {
+							treatment: usage.carbonFootprint.breakdown?.treatment ?? 0,
+							heating: usage.carbonFootprint.breakdown?.heating ?? 0,
+						},
+						equivalents: {
+							carKm: usage.carbonFootprint.equivalents?.carKm ?? 0,
+							trees: usage.carbonFootprint.equivalents?.trees ?? 0,
+							smartphones: usage.carbonFootprint.equivalents?.smartphones ?? 0,
+							meals: usage.carbonFootprint.equivalents?.meals ?? 0,
+						},
+				  }
+				: null,
+			occurredAt: usage.occurredAt,
+			createdAt: usage.createdAt,
+			updatedAt: usage.updatedAt,
+		}));
 
 		return res.status(200).json({
 			success: true,
-			count: usages.length,
-			data: usages,
+			page,
+			limit,
+			count: responseData.length,
+			total,
+			totalPages: Math.ceil(total / limit),
+			data: responseData,
 		});
 	} catch (error) {
 		console.error("Error fetching usages:", error);
@@ -108,9 +190,22 @@ exports.getAllUsages = async (req, res) => {
 exports.getUsageById = async (req, res) => {
 	try {
 		const { id } = req.params;
+		const userId = req.user.id;
 
-		const usage = await Usage.findOne({ _id: id, deletedAt: null })
-			.populate("userId", "name email");
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
+
+		const usage = await Usage.findOne({ 
+			_id: id, 
+			deletedAt: null,
+			householdId: household._id  // ✅ Security: only user's household data
+		});
 
 		if (!usage) {
 			return res.status(404).json({
@@ -119,9 +214,39 @@ exports.getUsageById = async (req, res) => {
 			});
 		}
 
+		const responseData = {
+			_id: usage._id,
+			householdId: usage.householdId,
+			activityType: usage.activityType,
+			liters: usage.liters,
+			durationMinutes: usage.durationMinutes,
+			flowRateLpm: usage.flowRateLpm,
+			count: usage.count,
+			litersPerUnit: usage.litersPerUnit,
+			carbonFootprint: usage.carbonFootprint
+				? {
+						carbonKg: usage.carbonFootprint.carbonKg,
+						energyKwh: usage.carbonFootprint.energyKwh,
+						breakdown: {
+							treatment: usage.carbonFootprint.breakdown?.treatment ?? 0,
+							heating: usage.carbonFootprint.breakdown?.heating ?? 0,
+						},
+						equivalents: {
+							carKm: usage.carbonFootprint.equivalents?.carKm ?? 0,
+							trees: usage.carbonFootprint.equivalents?.trees ?? 0,
+							smartphones: usage.carbonFootprint.equivalents?.smartphones ?? 0,
+							meals: usage.carbonFootprint.equivalents?.meals ?? 0,
+						},
+				  }
+				: null,
+			occurredAt: usage.occurredAt,
+			createdAt: usage.createdAt,
+			updatedAt: usage.updatedAt,
+		};
+
 		return res.status(200).json({
 			success: true,
-			data: usage,
+			data: responseData,
 		});
 	} catch (error) {
 		console.error("Error fetching usage:", error);
@@ -140,47 +265,161 @@ exports.getUsageById = async (req, res) => {
 exports.updateUsage = async (req, res) => {
 	try {
 		const { id } = req.params;
-		const {
-			activityType,
-			occurredAt,
-			durationMinutes,
-			count,
-			flowRateLpm,
-			litersPerUnit,
-			liters,
-			presetId,
-			source,
-			notes,
-		} = req.body;
+		const userId = req.user.id;
 
-		// Find existing usage record
-		const usage = await Usage.findOne({ _id: id, deletedAt: null });
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
 
-		if (!usage) {
+		const allowedFields = [
+			"activityType",
+			"occurredAt",
+			"durationMinutes",
+			"count",
+			"flowRateLpm",
+			"litersPerUnit",
+			"liters",
+			"presetId",
+			"source",
+			"notes",
+		];
+
+		const updateData = {};
+		for (const field of allowedFields) {
+			if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+				updateData[field] = req.body[field];
+			}
+		}
+
+		if (Object.prototype.hasOwnProperty.call(updateData, "occurredAt") && updateData.occurredAt) {
+			updateData.occurredAt = new Date(updateData.occurredAt);
+		}
+
+		if (Object.keys(updateData).length === 0) {
+			return res.status(400).json({
+				success: false,
+				message: "No valid fields provided for update",
+			});
+		}
+
+		const existingUsage = await Usage.findOne({
+			_id: id,
+			deletedAt: null,
+			householdId: household._id,
+		});
+
+		if (!existingUsage) {
 			return res.status(404).json({
 				success: false,
 				message: "Usage record not found",
 			});
 		}
 
-		// Update fields
-		if (activityType) usage.activityType = activityType;
-		if (occurredAt) usage.occurredAt = new Date(occurredAt);
-		if (durationMinutes !== undefined) usage.durationMinutes = durationMinutes;
-		if (count !== undefined) usage.count = count;
-		if (flowRateLpm !== undefined) usage.flowRateLpm = flowRateLpm;
-		if (litersPerUnit !== undefined) usage.litersPerUnit = litersPerUnit;
-		if (liters !== undefined) usage.liters = liters;
-		if (presetId !== undefined) usage.presetId = presetId;
-		if (source) usage.source = source;
-		if (notes !== undefined) usage.notes = notes;
+		const shouldRecalculate =
+			Object.prototype.hasOwnProperty.call(updateData, "durationMinutes") ||
+			Object.prototype.hasOwnProperty.call(updateData, "flowRateLpm") ||
+			Object.prototype.hasOwnProperty.call(updateData, "count") ||
+			Object.prototype.hasOwnProperty.call(updateData, "litersPerUnit") ||
+			Object.prototype.hasOwnProperty.call(updateData, "liters") ||
+			Object.prototype.hasOwnProperty.call(updateData, "activityType");
 
-		const updatedUsage = await usage.save();
+		if (shouldRecalculate) {
+			const mergedActivityType = updateData.activityType ?? existingUsage.activityType;
+			const mergedDuration = updateData.durationMinutes ?? existingUsage.durationMinutes;
+			const mergedFlowRate = updateData.flowRateLpm ?? existingUsage.flowRateLpm;
+			const mergedCount = updateData.count ?? existingUsage.count;
+			const mergedLitersPerUnit = updateData.litersPerUnit ?? existingUsage.litersPerUnit;
+
+			let computedLiters =
+				typeof updateData.liters === "number" && updateData.liters >= 0
+					? updateData.liters
+					: existingUsage.liters;
+
+			if (Object.prototype.hasOwnProperty.call(updateData, "liters") && updateData.liters == null) {
+				computedLiters = existingUsage.liters;
+			}
+
+			if (!Object.prototype.hasOwnProperty.call(updateData, "liters")) {
+				if (mergedDuration != null && mergedFlowRate != null) {
+					computedLiters = mergedDuration * mergedFlowRate;
+				} else if (mergedCount != null && mergedLitersPerUnit != null) {
+					computedLiters = mergedCount * mergedLitersPerUnit;
+				}
+			}
+
+			updateData.liters = computedLiters;
+
+			const carbonData = await calculateWaterCarbon(
+				computedLiters,
+				isHeatedActivity(mergedActivityType)
+			);
+
+			updateData.carbonFootprint = {
+				carbonKg: carbonData.carbonKg,
+				energyKwh: carbonData.energyKwh,
+				breakdown: carbonData.breakdown,
+				equivalents: carbonData.equivalents,
+				isHeatedWater: isHeatedActivity(mergedActivityType),
+				source: carbonData.source,
+				calculatedAt: carbonData.calculatedAt,
+			};
+		}
+
+		const updatedUsage = await Usage.findOneAndUpdate(
+			{
+				_id: id,
+				deletedAt: null,
+				householdId: household._id,
+			},
+			{ $set: updateData },
+			{ new: true, runValidators: true }
+		);
+
+		if (!updatedUsage) {
+			return res.status(404).json({
+				success: false,
+				message: "Usage record not found",
+			});
+		}
+		const responseData = {
+			_id: updatedUsage._id,
+			householdId: updatedUsage.householdId,
+			activityType: updatedUsage.activityType,
+			liters: updatedUsage.liters,
+			durationMinutes: updatedUsage.durationMinutes,
+			flowRateLpm: updatedUsage.flowRateLpm,
+			count: updatedUsage.count,
+			litersPerUnit: updatedUsage.litersPerUnit,
+			carbonFootprint: updatedUsage.carbonFootprint
+				? {
+						carbonKg: updatedUsage.carbonFootprint.carbonKg,
+						energyKwh: updatedUsage.carbonFootprint.energyKwh,
+						breakdown: {
+							treatment: updatedUsage.carbonFootprint.breakdown?.treatment ?? 0,
+							heating: updatedUsage.carbonFootprint.breakdown?.heating ?? 0,
+						},
+						equivalents: {
+							carKm: updatedUsage.carbonFootprint.equivalents?.carKm ?? 0,
+							trees: updatedUsage.carbonFootprint.equivalents?.trees ?? 0,
+							smartphones: updatedUsage.carbonFootprint.equivalents?.smartphones ?? 0,
+							meals: updatedUsage.carbonFootprint.equivalents?.meals ?? 0,
+						},
+				  }
+				: null,
+			occurredAt: updatedUsage.occurredAt,
+			createdAt: updatedUsage.createdAt,
+			updatedAt: updatedUsage.updatedAt,
+		};
 
 		return res.status(200).json({
 			success: true,
 			message: "Usage updated successfully",
-			data: updatedUsage,
+			data: responseData,
 		});
 	} catch (error) {
 		console.error("Error updating usage:", error);
@@ -199,9 +438,23 @@ exports.updateUsage = async (req, res) => {
 exports.deleteUsage = async (req, res) => {
 	try {
 		const { id } = req.params;
+		const userId = req.user.id;
 
-		// Find existing usage record
-		const usage = await Usage.findOne({ _id: id, deletedAt: null });
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
+
+		// Find existing usage record (only from user's household)
+		const usage = await Usage.findOne({ 
+			_id: id, 
+			deletedAt: null,
+			householdId: household._id  // ✅ Security: only user's household
+		});
 
 		if (!usage) {
 			return res.status(404).json({
@@ -241,14 +494,18 @@ exports.deleteUsage = async (req, res) => {
  */
 exports.getCarbonStats = async (req, res) => {
 	try {
-		const { householdId, startDate, endDate } = req.query;
+		const userId = req.user.id;
 
-		if (!householdId) {
-			return res.status(400).json({
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
 				success: false,
-				message: "householdId is required",
+				message: "No household found for this user.",
 			});
 		}
+
+		const { startDate, endDate } = req.query;
 
 		// Default date range: last 30 days
 		const end = endDate ? new Date(endDate) : new Date();
@@ -258,7 +515,7 @@ exports.getCarbonStats = async (req, res) => {
 
 		// Fetch usage records
 		const usages = await Usage.find({
-			householdId: mongoose.Types.ObjectId(householdId),
+			householdId: household._id,
 			occurredAt: { $gte: start, $lte: end },
 			deletedAt: null,
 		}).sort({ occurredAt: -1 });
@@ -269,7 +526,7 @@ exports.getCarbonStats = async (req, res) => {
 		// Get previous period for comparison
 		const prevStart = new Date(start.getTime() - (end.getTime() - start.getTime()));
 		const prevUsages = await Usage.find({
-			householdId: mongoose.Types.ObjectId(householdId),
+			householdId: household._id,
 			occurredAt: { $gte: prevStart, $lt: start },
 			deletedAt: null,
 		});
@@ -326,14 +583,18 @@ exports.getCarbonStats = async (req, res) => {
  */
 exports.getCarbonByActivity = async (req, res) => {
 	try {
-		const { householdId, startDate, endDate } = req.query;
+		const userId = req.user.id;
 
-		if (!householdId) {
-			return res.status(400).json({
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
 				success: false,
-				message: "householdId is required",
+				message: "No household found for this user.",
 			});
 		}
+
+		const { startDate, endDate } = req.query;
 
 		const end = endDate ? new Date(endDate) : new Date();
 		const start = startDate
@@ -344,7 +605,7 @@ exports.getCarbonByActivity = async (req, res) => {
 		const breakdown = await Usage.aggregate([
 			{
 				$match: {
-					householdId: mongoose.Types.ObjectId(householdId),
+					householdId: household._id,
 					occurredAt: { $gte: start, $lte: end },
 					deletedAt: null,
 				},
@@ -509,14 +770,18 @@ exports.getCarbonLeaderboard = async (req, res) => {
  */
 exports.getCarbonTrend = async (req, res) => {
 	try {
-		const { householdId, days = 30 } = req.query;
+		const userId = req.user.id;
 
-		if (!householdId) {
-			return res.status(400).json({
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
 				success: false,
-				message: "householdId is required",
+				message: "No household found for this user.",
 			});
 		}
+
+		const { days = 30 } = req.query;
 
 		const end = new Date();
 		const start = new Date(end.getTime() - parseInt(days) * 24 * 60 * 60 * 1000);
@@ -525,7 +790,7 @@ exports.getCarbonTrend = async (req, res) => {
 		const trend = await Usage.aggregate([
 			{
 				$match: {
-					householdId: mongoose.Types.ObjectId(householdId),
+					householdId: household._id,
 					occurredAt: { $gte: start, $lte: end },
 					deletedAt: null,
 				},

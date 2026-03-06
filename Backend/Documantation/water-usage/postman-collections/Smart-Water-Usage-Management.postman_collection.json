@@ -1,0 +1,425 @@
+{
+	"info": {
+		"_postman_id": "water-usage-management-2026",
+		"name": "Smart Water - Usage Management",
+		"description": "Water Usage Management API with Carbon Footprint Tracking",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"rashmika@gmail.com\",\n  \"password\": \"1234\",\n  \"role\": \"user\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.environment.set(\"auth_token\", jsonData.token);",
+									"        console.log(\"Token saved:\", jsonData.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"rashmika@gmail.com\",\n  \"password\": \"1234\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login and receive authentication token (automatically saved to environment)"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints to get access token"
+		},
+		{
+			"name": "Water Usage - CRUD",
+			"item": [
+				{
+					"name": "Create Usage Record",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"activityType\": \"shower\",\n  \"durationMinutes\": 10,\n  \"flowRateLpm\": 5,\n  \"source\": \"manual\",\n  \"notes\": \"Morning shower\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/usage",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage"
+							]
+						},
+						"description": "Create a new water usage record with activity details"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Usage Records",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage"
+							]
+						},
+						"description": "Get all usage records for the authenticated user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Usage Record By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "usage-record-id"
+								}
+							]
+						},
+						"description": "Get a specific usage record by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Usage Record",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"activityType\": \"shower\",\n  \"durationMinutes\": 9,\n  \"flowRateLpm\": 5,\n  \"notes\": \"Updated entry\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/usage/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "usage-record-id"
+								}
+							]
+						},
+						"description": "Update an existing usage record"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Usage Record",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "usage-record-id"
+								}
+							]
+						},
+						"description": "Soft delete a usage record"
+					},
+					"response": []
+				}
+			],
+			"description": "Standard CRUD operations for water usage records"
+		},
+		{
+			"name": "Carbon Footprint Tracking",
+			"item": [
+				{
+					"name": "Get Carbon Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage/carbon-stats?householdId=your-household-id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								"carbon-stats"
+							],
+							"query": [
+								{
+									"key": "householdId",
+									"value": "your-household-id",
+									"description": "Optional: Filter by household ID"
+								},
+								{
+									"key": "startDate",
+									"value": "2026-03-01",
+									"description": "Optional: Start date filter",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2026-03-31",
+									"description": "Optional: End date filter",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get carbon footprint statistics for a household"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Carbon By Activity",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage/carbon-by-activity?householdId=your-household-id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								"carbon-by-activity"
+							],
+							"query": [
+								{
+									"key": "householdId",
+									"value": "your-household-id",
+									"description": "Optional: Filter by household ID"
+								},
+								{
+									"key": "startDate",
+									"value": "2026-03-01",
+									"description": "Optional: Start date filter",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2026-03-31",
+									"description": "Optional: End date filter",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get carbon footprint breakdown by activity type (shower, dishes, etc.)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Carbon Leaderboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage/carbon-leaderboard?period=month&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								"carbon-leaderboard"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Time period: week, month, year"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of households to return"
+								}
+							]
+						},
+						"description": "Get carbon footprint leaderboard to compare households"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Carbon Trend",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usage/carbon-trend?householdId=your-household-id&days=30",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"usage",
+								"carbon-trend"
+							],
+							"query": [
+								{
+									"key": "householdId",
+									"value": "your-household-id",
+									"description": "Optional: Filter by household ID"
+								},
+								{
+									"key": "days",
+									"value": "30",
+									"description": "Number of days to include in trend"
+								}
+							]
+						},
+						"description": "Get daily carbon footprint trend data"
+					},
+					"response": []
+				}
+			],
+			"description": "Carbon footprint tracking and analytics endpoints"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "default"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "default"
+		}
+	]
+}
