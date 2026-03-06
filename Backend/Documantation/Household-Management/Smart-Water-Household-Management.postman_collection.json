@@ -1,0 +1,175 @@
+{
+  "info": {
+    "_postman_id": "household-management-2026",
+    "name": "Smart Water - Household Management",
+    "description": "Household & Zone Management APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Household CRUD",
+      "item": [
+        {
+          "name": "Create Household",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Home\",\n  \"location\": \"Colombo\",\n  \"numberOfResidents\": 4,\n  \"propertyType\": \"house\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households",
+              "host": ["{{base_url}}"],
+              "path": ["api","households"]
+            }
+          }
+        },
+        {
+          "name": "Get My Households",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/my-households",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","my-households"]
+            }
+          }
+        },
+        {
+          "name": "Get My Households With Zones",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/my-with-zones",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","my-with-zones"]
+            }
+          }
+        },
+        {
+          "name": "Get All Households (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households",
+              "host": ["{{base_url}}"],
+              "path": ["api","households"]
+            }
+          }
+        },
+        {
+          "name": "Get All With Zones (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/all-with-zones",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","all-with-zones"]
+            }
+          }
+        },
+        {
+          "name": "Get Single Household",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","{{household_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Household",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Home\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","{{household_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Household",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","{{household_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Zone",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kitchen\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/zones",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","{{household_id}}","zones"]
+            }
+          }
+        },
+        {
+          "name": "Get Zones",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/zones",
+              "host": ["{{base_url}}"],
+              "path": ["api","households","{{household_id}}","zones"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000" },
+    { "key": "auth_token", "value": "" },
+    { "key": "household_id", "value": "" }
+  ]
+}
