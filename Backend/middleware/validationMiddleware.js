@@ -94,6 +94,78 @@ exports.validateUsageInput = (req, res, next) => {
 };
 
 /**
+ * Validate usage update input data (partial update)
+ */
+exports.validateUsageUpdateInput = (req, res, next) => {
+	const {
+		activityType,
+		durationMinutes,
+		count,
+		flowRateLpm,
+		litersPerUnit,
+		liters,
+		occurredAt,
+	} = req.body;
+
+	if (activityType !== undefined) {
+		if (typeof activityType !== "string" || activityType.trim() === "") {
+			return res.status(400).json({
+				success: false,
+				message: "activityType must be a non-empty string",
+			});
+		}
+	}
+
+	const numericFields = {
+		durationMinutes,
+		count,
+		flowRateLpm,
+		litersPerUnit,
+		liters,
+	};
+
+	for (const [field, value] of Object.entries(numericFields)) {
+		if (value !== undefined && value !== null) {
+			if (typeof value !== "number" || value < 0 || isNaN(value)) {
+				return res.status(400).json({
+					success: false,
+					message: `${field} must be a non-negative number`,
+				});
+			}
+		}
+	}
+
+	if (occurredAt !== undefined) {
+		const date = new Date(occurredAt);
+		if (isNaN(date.getTime())) {
+			return res.status(400).json({
+				success: false,
+				message: "occurredAt must be a valid date",
+			});
+		}
+
+		if (date > new Date()) {
+			return res.status(400).json({
+				success: false,
+				message: "occurredAt cannot be in the future",
+			});
+		}
+	}
+
+	if (req.body.source !== undefined) {
+		const validSources = ["manual", "preset", "imported"];
+		if (!validSources.includes(req.body.source)) {
+			return res.status(400).json({
+				success: false,
+				message: `source must be one of: ${validSources.join(", ")}`,
+			});
+		}
+	}
+
+	next();
+};
+
+/**
  * Validate bulk operations input
  */
 exports.validateBulkUsageInput = (req, res, next) => {
