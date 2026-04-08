@@ -1,0 +1,26 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 20
+      arrivalRate: 4
+      name: baseline
+    - duration: 30
+      arrivalRate: 20
+      name: spike
+    - duration: 30
+      arrivalRate: 8
+      name: recovery
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: usage_spike_read_path
+    flow:
+      - get:
+          url: "/usage"
+      - get:
+          url: "/usage/carbon-leaderboard"
+      - get:
+          url: "/usage/carbon-stats"

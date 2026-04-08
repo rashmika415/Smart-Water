@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:unit": "jest tests/unit --runInBand",
+    "test:unit:usage": "jest tests/unit --runInBand --testPathPatterns=\"usage|carbonService|usageHelpers\"",
+    "test:integration": "jest tests/integration --runInBand",
+    "test:integration:usage": "jest tests/integration/usage --runInBand",
+    "test:performance:usage": "artillery run tests/performance/usage/usage-load.yml",
+    "test:performance:usage:spike": "artillery run tests/performance/usage/usage-spike.yml",
     "start": "nodemon app.js"
   },
   "author": "",
@@ -18,7 +24,18 @@
     "mongoose": "^9.2.0"
   },
   "devDependencies": {
+    "artillery": "^2.0.30",
+    "jest": "^30.3.0",
+    "mongodb-memory-server": "^11.0.1",
     "nodemailer": "^8.0.1",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "clearMocks": true
   }
 }
