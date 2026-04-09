@@ -2,26 +2,18 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
-  AlertTriangle,
-  CalendarClock,
   Droplet,
   Gauge,
   Leaf,
   Receipt,
   ShieldCheck,
-  Sparkles,
-  Target,
   TrendingUp,
-  Zap,
 } from "lucide-react";
 import { Navbar, Footer } from "../components/SiteShell";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../auth/AuthContext";
 import { householdsApi, usageApi } from "../lib/api";
-
-const MONTHLY_TARGET_STORAGE_KEY = "smartwater.virtualMeterMonthlyTarget";
-const WEEKLY_GOALS_STORAGE_KEY = "smartwater.weeklyGoals";
 
 function formatDateKey(value) {
   return new Date(value).toISOString().slice(0, 10);
@@ -57,11 +49,147 @@ function buildWindowedTrend(rawTrend, days) {
   return out;
 }
 
+function SectionHeader({ title, subtitle, badge }) {
+  return (
+    <div className="border-b border-slate-200/70 bg-gradient-to-r from-sky-50/70 via-white to-emerald-50/60 px-5 py-4 sm:px-6">
+      {badge ? (
+        <div className="inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+          {badge}
+        </div>
+      ) : null}
+      <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 sm:text-xl">{title}</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-600">{subtitle}</p>
+    </div>
+  );
+}
+
+function Reveal({ children, delay = 0, className = "" }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setVisible(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <div
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0px)" : "translateY(10px)",
+        transition: "opacity 560ms ease, transform 560ms ease",
+        transitionDelay: `${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function LandingFeature({ icon: Icon, title, body }) {
+  return (
+    <div className="h-full rounded-2xl bg-white/80 p-3.5 ring-1 ring-slate-200/80 backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-30px_rgba(15,23,42,0.55)]">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700 ring-1 ring-sky-200/80">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <div className="text-base font-black tracking-tight text-slate-900">{title}</div>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VirtualMeterLandingIntro({ token }) {
+  return (
+    <Card className="overflow-hidden border-0 bg-gradient-to-br from-sky-100/80 via-slate-50 to-emerald-100/70 p-0 ring-1 ring-slate-200/80">
+      <div className="grid gap-0 lg:grid-cols-2">
+        <div className="relative min-h-[300px] lg:min-h-[500px]">
+          <img
+            src="/virtualmeter.jpg"
+            alt="Virtual water meter"
+            className="h-full w-full object-cover"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-slate-900/20 via-transparent to-sky-200/20" />
+
+          <div className="absolute left-4 top-4 rounded-2xl bg-white/90 px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200/80 backdrop-blur-sm">
+            Live stream status
+          </div>
+          <div className="absolute right-4 top-4 rounded-2xl bg-white/90 px-4 py-2 text-base font-black text-emerald-700 ring-1 ring-emerald-200/80 backdrop-blur-sm">
+            2.4 L/min
+          </div>
+          <div className="absolute bottom-4 left-4 rounded-2xl bg-white/90 px-5 py-3 ring-1 ring-slate-200/80 backdrop-blur-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Daily goal</div>
+            <div className="mt-1 text-3xl font-black text-emerald-700">70%</div>
+            <div className="text-sm text-slate-600">84/120 L</div>
+          </div>
+          <div className="absolute bottom-4 right-4 rounded-2xl bg-white/90 px-4 py-2 text-xl font-black text-emerald-700 ring-1 ring-emerald-200/80 backdrop-blur-sm">
+            Optimal
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-7 lg:p-8">
+          <div className="inline-flex items-center rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200/70">
+            {token ? "Personal Virtual Meter" : "Public Virtual Meter"}
+          </div>
+
+          <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+            Real-Time Water
+            <span className="text-emerald-600"> Monitoring</span>
+          </h1>
+
+          <p className="mt-3 text-base leading-7 text-slate-600 sm:text-lg">
+            Track household consumption patterns, detect spikes early, and manage water goals from one clean dashboard.
+          </p>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            {token ? (
+              <>
+                <Button as={Link} to="/user/water-activities" size="lg">Go to Water Activities</Button>
+                <Button as={Link} to="/user/carbon-analytics" variant="ghost" size="lg">Open Carbon Analytics</Button>
+              </>
+            ) : (
+              <>
+                <Button as={Link} to="/register" size="lg">Create Account</Button>
+                <Button as={Link} to="/login" variant="ghost" size="lg">Login</Button>
+              </>
+            )}
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <LandingFeature
+              icon={Droplet}
+              title="Per-Tap Tracking"
+              body="Monitor each activity source clearly with liters and footprint impact."
+            />
+            <LandingFeature
+              icon={ShieldCheck}
+              title="Leak Detection"
+              body="Get early warnings when daily usage rises above normal baseline."
+            />
+            <LandingFeature
+              icon={TrendingUp}
+              title="Usage History"
+              body="Compare recent trends to understand behavior changes over time."
+            />
+            <LandingFeature
+              icon={Activity}
+              title="Live Dashboard"
+              body="View real-time status, monthly progress, and optimization guidance."
+            />
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function PublicEstimator() {
   const [residents, setResidents] = useState(3);
   const [propertyType, setPropertyType] = useState("house");
   const [climateZone, setClimateZone] = useState("intermediate");
-  const [savingsPlan, setSavingsPlan] = useState("balanced");
 
   const estimate = useMemo(() => {
     const residentBase = 85;
@@ -77,54 +205,17 @@ function PublicEstimator() {
     return { dailyLiters, monthlyLiters, monthlyCarbonKg, monthlyBill };
   }, [residents, propertyType, climateZone]);
 
-  const estimatorInsights = useMemo(() => {
-    const litersPerResident = estimate.dailyLiters / Math.max(residents, 1);
-    const annualLiters = estimate.monthlyLiters * 12;
-    const annualCarbon = estimate.monthlyCarbonKg * 12;
-
-    const efficiencyBand =
-      litersPerResident <= 75
-        ? "Efficient"
-        : litersPerResident <= 95
-          ? "Moderate"
-          : "High usage";
-
-    return {
-      litersPerResident,
-      annualLiters,
-      annualCarbon,
-      efficiencyBand,
-    };
-  }, [estimate, residents]);
-
-  const optimizedScenario = useMemo(() => {
-    const savingRate =
-      savingsPlan === "aggressive" ? 0.2 : savingsPlan === "balanced" ? 0.12 : 0.06;
-
-    const projectedDaily = Math.max(1, Math.round(estimate.dailyLiters * (1 - savingRate)));
-    const projectedMonthly = projectedDaily * 30;
-    const monthlySavedLiters = Math.max(0, estimate.monthlyLiters - projectedMonthly);
-    const monthlySavedCarbon = Number((monthlySavedLiters * 0.00052).toFixed(3));
-    const monthlySavedBill = Number(((monthlySavedLiters / 1000) * 125).toFixed(2));
-
-    return {
-      savingRate,
-      projectedDaily,
-      projectedMonthly,
-      monthlySavedLiters,
-      monthlySavedCarbon,
-      monthlySavedBill,
-    };
-  }, [estimate, savingsPlan]);
-
   return (
-    <Card className="p-6">
-      <h2 className="text-xl font-black tracking-tight text-slate-900">Public Virtual Meter</h2>
-      <p className="mt-1 text-sm text-slate-600">
-        Estimate household usage before creating an account.
-      </p>
+    <Card className="overflow-hidden border-0 bg-white/90 p-0 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.55)] ring-1 ring-slate-200/80">
+      <SectionHeader
+        badge="Guest Mode"
+        title="Public Virtual Meter"
+        subtitle="Estimate household usage before creating an account."
+      />
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+      <div className="p-5 sm:p-6">
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Residents</label>
           <input
@@ -162,102 +253,39 @@ function PublicEstimator() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric title="Estimated daily liters" value={`${estimate.dailyLiters.toLocaleString()} L`} icon={Droplet} />
         <Metric title="Estimated monthly liters" value={`${estimate.monthlyLiters.toLocaleString()} L`} icon={Gauge} />
         <Metric title="Estimated monthly carbon" value={`${estimate.monthlyCarbonKg.toFixed(3)} kg`} icon={Leaf} />
         <Metric title="Estimated monthly bill" value={`${estimate.monthlyBill.toFixed(2)}`} icon={Receipt} />
       </div>
 
-      <Card className="mt-5 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-sm font-extrabold text-slate-900">Savings scenario simulator</div>
-            <div className="mt-1 text-xs text-slate-500">Preview how behavior changes can reduce usage before signup.</div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "light", label: "Light" },
-              { id: "balanced", label: "Balanced" },
-              { id: "aggressive", label: "Aggressive" },
-            ].map((plan) => (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSavingsPlan(plan.id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  savingsPlan === plan.id
-                    ? "bg-brand-100 text-brand-900 ring-1 ring-brand-200"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {plan.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-100">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current estimate</div>
-            <div className="mt-2 text-lg font-black text-slate-900">{estimate.monthlyLiters.toLocaleString()} L/month</div>
-            <div className="mt-1 text-xs text-slate-500">Baseline from current household inputs.</div>
-          </div>
-          <div className="rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
-            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">With {savingsPlan} plan</div>
-            <div className="mt-2 text-lg font-black text-emerald-900">{optimizedScenario.projectedMonthly.toLocaleString()} L/month</div>
-            <div className="mt-1 text-xs text-emerald-800">
-              Save {optimizedScenario.monthlySavedLiters.toLocaleString()} L, {optimizedScenario.monthlySavedCarbon.toFixed(3)} kg CO2, and {optimizedScenario.monthlySavedBill.toFixed(2)} /month.
-            </div>
-          </div>
+      <Card className="mt-4 border-0 bg-slate-50/90 p-3.5 ring-1 ring-slate-200/70">
+        <div className="text-sm font-extrabold text-slate-900">How this estimate works</div>
+        <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200/70">Based on residents, property type, and climate.</div>
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200/70">Uses average water-carbon conversion factors.</div>
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200/70">Your personal meter becomes available after login.</div>
         </div>
       </Card>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <Sparkles className="h-4 w-4 text-amber-500" /> Efficiency band
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">{estimatorInsights.efficiencyBand}</div>
-          <div className="mt-1 text-xs text-slate-500">
-            {estimatorInsights.litersPerResident.toFixed(1)} L/resident/day based on current assumptions.
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <CalendarClock className="h-4 w-4 text-sky-500" /> Annual projection
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">{Math.round(estimatorInsights.annualLiters).toLocaleString()} L</div>
-          <div className="mt-1 text-xs text-slate-500">Estimated yearly volume at current household profile.</div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <Leaf className="h-4 w-4 text-emerald-500" /> Annual carbon estimate
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">{estimatorInsights.annualCarbon.toFixed(2)} kg</div>
-          <div className="mt-1 text-xs text-slate-500">Useful for setting sustainability targets before signup.</div>
-        </Card>
-      </div>
-
-      <Card className="mt-5 p-4">
-        <div className="text-sm font-extrabold text-slate-900">How to lower this estimate quickly</div>
-        <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-          <div className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Shorten showers by 2 minutes per person.</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Run laundry and dishwashing with full loads.</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Fix leaks: 1 dripping tap can waste 10-20 L/day.</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Use watering schedules for outdoor use.</div>
-        </div>
-      </Card>
-
-      <div className="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+      <div className="mt-4 rounded-xl bg-slate-50 px-4 py-2.5 text-xs text-slate-600 ring-1 ring-slate-200/70">
         Estimate mode: calculated from selected inputs, baseline usage assumptions, and average local water-carbon factors.
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <Button as={Link} to="/register" size="lg">Create Account to Track Real Data</Button>
-        <Button as={Link} to="/login" variant="ghost" size="lg">Login to Personal Meter</Button>
+      <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
+        <Button as={Link} to="/register" size="lg">Create Account</Button>
+        <Button as={Link} to="/login" variant="ghost" size="lg">Login</Button>
+        <Button as={Link} to="/" variant="ghost" size="lg">Back to Home</Button>
+      </div>
+
+      <Card className="mt-5 border-0 bg-white p-3.5 ring-1 ring-slate-200/70">
+        <div className="text-sm font-extrabold text-slate-900">After login, you get</div>
+        <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+          <div className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Live personal usage and monthly goal tracking.</div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Spike alerts, diagnostics, and quick actions.</div>
+        </div>
+      </Card>
       </div>
     </Card>
   );
@@ -265,87 +293,28 @@ function PublicEstimator() {
 
 function Metric({ title, value, icon: Icon }) {
   return (
-    <Card className="p-5">
+    <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-30px_rgba(15,23,42,0.55)]">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</div>
-        <Icon className="h-4 w-4 text-brand-700" />
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-100 to-emerald-100 ring-1 ring-slate-200/70">
+          <Icon className="h-4 w-4 text-brand-700" />
+        </span>
       </div>
-      <div className="mt-2 text-xl font-black text-slate-900">{value}</div>
-    </Card>
-  );
-}
-
-function MiniTrendChart({ title, subtitle, colorClass, points, accessor, unit }) {
-  const width = 420;
-  const height = 140;
-  const padding = 18;
-
-  if (!points.length) {
-    return (
-      <Card className="p-4">
-        <div className="text-sm font-extrabold text-slate-900">{title}</div>
-        <div className="mt-1 text-xs text-slate-500">{subtitle}</div>
-        <div className="mt-5 text-sm text-slate-500">No trend data yet.</div>
-      </Card>
-    );
-  }
-
-  const values = points.map((p) => Number(accessor(p) || 0));
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = Math.max(max - min, 1);
-
-  const coords = points.map((point, idx) => {
-    const x = padding + (idx * (width - padding * 2)) / Math.max(points.length - 1, 1);
-    const y = height - padding - ((Number(accessor(point) || 0) - min) / range) * (height - padding * 2);
-    return { x, y };
-  });
-
-  const path = coords.map((c, idx) => `${idx === 0 ? "M" : "L"}${c.x},${c.y}`).join(" ");
-  const lastValue = Number(accessor(points[points.length - 1]) || 0);
-
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-extrabold text-slate-900">{title}</div>
-          <div className="mt-1 text-xs text-slate-500">{subtitle}</div>
-        </div>
-        <div className="text-sm font-semibold text-slate-700">
-          {lastValue.toLocaleString()} {unit}
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full">
-          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#cbd5e1" />
-          <path d={path} fill="none" strokeWidth="3" className={colorClass} strokeLinecap="round" />
-          {coords.map((c, idx) => (
-            <circle key={`${points[idx].date}-${idx}`} cx={c.x} cy={c.y} r="2.8" className={colorClass} />
-          ))}
-        </svg>
-      </div>
-
-      <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
-        <span>{points[0].date}</span>
-        <span>{points[points.length - 1].date}</span>
-      </div>
+      <div className="mt-2 text-lg font-black text-slate-900 sm:text-xl">{value}</div>
     </Card>
   );
 }
 
 function PrivateMeter() {
   const { token } = useAuth();
-  const [trendDays, setTrendDays] = useState(7);
-  const [targetMode, setTargetMode] = useState("auto");
-  const [customMonthlyTarget, setCustomMonthlyTarget] = useState("");
+  const [trendDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [copyStatus, setCopyStatus] = useState("");
   const [stats, setStats] = useState(null);
   const [trend, setTrend] = useState([]);
   const [households, setHouseholds] = useState([]);
   const [recent, setRecent] = useState([]);
+  const [monthFallbackTotals, setMonthFallbackTotals] = useState({ liters: 0, carbonKg: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -353,27 +322,39 @@ function PrivateMeter() {
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startDate = monthStart.toISOString().slice(0, 10);
-    const endDate = now.toISOString().slice(0, 10);
+    const startDate = monthStart.toISOString();
+    const endDate = now.toISOString();
 
     try {
-      const [statsRes, trendRes, householdsRes, recentRes] = await Promise.all([
+      const [statsRes, trendRes, householdsRes, recentRes, monthUsagesRes] = await Promise.all([
         usageApi.carbonStats(token, { startDate, endDate }),
         usageApi.carbonTrend(token, { days: trendDays }),
         householdsApi.myHouseholds(token),
         usageApi.list(token, { page: 1, limit: 5, sort: "-occurredAt" }),
+        usageApi.list(token, { page: 1, limit: 1000, startDate, endDate, sort: "-occurredAt" }),
       ]);
 
       setStats(statsRes?.data || null);
       setTrend(buildWindowedTrend(trendRes?.data?.trend, trendDays));
       setHouseholds(Array.isArray(householdsRes) ? householdsRes : []);
       setRecent(Array.isArray(recentRes?.data) ? recentRes.data : []);
+      const monthUsageRows = Array.isArray(monthUsagesRes?.data) ? monthUsagesRes.data : [];
+      const fallbackLiters = monthUsageRows.reduce((sum, item) => sum + Number(item?.liters || 0), 0);
+      const fallbackCarbonKg = monthUsageRows.reduce(
+        (sum, item) => sum + Number(item?.carbonFootprint?.carbonKg || 0),
+        0
+      );
+      setMonthFallbackTotals({
+        liters: fallbackLiters,
+        carbonKg: Number(fallbackCarbonKg.toFixed(3)),
+      });
     } catch (e) {
       setError(e?.message || "Failed to load virtual meter data");
       setStats(null);
       setTrend([]);
       setHouseholds([]);
       setRecent([]);
+      setMonthFallbackTotals({ liters: 0, carbonKg: 0 });
     } finally {
       setLoading(false);
     }
@@ -383,45 +364,17 @@ function PrivateMeter() {
     load();
   }, [load]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(MONTHLY_TARGET_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed?.mode === "auto" || parsed?.mode === "custom") {
-        setTargetMode(parsed.mode);
-      }
-      if (parsed?.value != null && Number(parsed.value) > 0) {
-        setCustomMonthlyTarget(String(Math.round(Number(parsed.value))));
-      }
-    } catch {
-      setTargetMode("auto");
-      setCustomMonthlyTarget("");
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      MONTHLY_TARGET_STORAGE_KEY,
-      JSON.stringify({
-        mode: targetMode,
-        value: Number(customMonthlyTarget || 0),
-      })
-    );
-  }, [targetMode, customMonthlyTarget]);
-
   const summary = useMemo(() => {
-    const totalLiters = Number(stats?.current?.totalLiters || 0);
-    const totalCarbon = Number(stats?.current?.totalCarbonKg || 0);
+    const statsLiters = Number(stats?.current?.totalLiters || 0);
+    const statsCarbon = Number(stats?.current?.totalCarbonKg || 0);
+    const totalLiters = statsLiters > 0 ? statsLiters : Number(monthFallbackTotals.liters || 0);
+    const totalCarbon = statsCarbon > 0 ? statsCarbon : Number(monthFallbackTotals.carbonKg || 0);
     const today = new Date().toISOString().slice(0, 10);
     const todayEntry = trend.find((t) => t.date === today);
     const todayLiters = Number(todayEntry?.totalLiters || 0);
-    const baseTargetLiters = households.reduce((sum, h) => sum + Number(h.estimatedMonthlyLiters || 0), 0) || 1;
-    const customTarget = Number(customMonthlyTarget || 0);
-    const effectiveTargetLiters =
-      targetMode === "custom" && customTarget > 0 ? customTarget : baseTargetLiters;
+    const targetLiters = households.reduce((sum, h) => sum + Number(h.estimatedMonthlyLiters || 0), 0) || 1;
     const billForecast = households.reduce((sum, h) => sum + Number(h.predictedBill || 0), 0);
-    const progress = Math.min((totalLiters / effectiveTargetLiters) * 100, 100);
+    const progress = Math.min((totalLiters / targetLiters) * 100, 100);
 
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -429,16 +382,14 @@ function PrivateMeter() {
     const elapsedRatio = Math.max(dayOfMonth / daysInMonth, 0.01);
     const projectedMonthLiters = totalLiters / elapsedRatio;
     const projectedMonthCarbon = totalCarbon / elapsedRatio;
-    const litersDeltaToTarget = projectedMonthLiters - effectiveTargetLiters;
+    const litersDeltaToTarget = projectedMonthLiters - targetLiters;
     const budgetStatus = litersDeltaToTarget > 0 ? "Above target" : "Within target";
 
     return {
       totalLiters,
       totalCarbon,
       todayLiters,
-      targetLiters: effectiveTargetLiters,
-      baseTargetLiters,
-      usingCustomTarget: targetMode === "custom" && customTarget > 0,
+      targetLiters,
       billForecast,
       progress,
       projectedMonthLiters,
@@ -446,31 +397,7 @@ function PrivateMeter() {
       litersDeltaToTarget,
       budgetStatus,
     };
-  }, [stats, trend, households, targetMode, customMonthlyTarget]);
-
-  useEffect(() => {
-    const weeklyLiters = Math.max(1, Math.round(summary.targetLiters / 4.345));
-    try {
-      const raw = localStorage.getItem(WEEKLY_GOALS_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      const activities = Number(parsed?.activities || 20);
-      localStorage.setItem(
-        WEEKLY_GOALS_STORAGE_KEY,
-        JSON.stringify({
-          liters: weeklyLiters,
-          activities,
-        })
-      );
-    } catch {
-      localStorage.setItem(
-        WEEKLY_GOALS_STORAGE_KEY,
-        JSON.stringify({
-          liters: weeklyLiters,
-          activities: 20,
-        })
-      );
-    }
-  }, [summary.targetLiters]);
+  }, [stats, trend, households, monthFallbackTotals]);
 
   const trendSummary = useMemo(() => {
     if (!trend.length) {
@@ -504,78 +431,19 @@ function PrivateMeter() {
     };
   }, [trend]);
 
-  const diagnosticsText = useMemo(() => {
-    const generatedAt = new Date().toLocaleString();
-    const lines = [
-      "Virtual Meter Diagnostics",
-      `Generated at: ${generatedAt}`,
-      `Window: ${trendDays} days`,
-      "Formula: spike ratio = today liters / recent average liters",
-      "Trigger: warning when ratio >= 1.30",
-      `Today liters: ${Math.round(trendSummary.todayLiters)} L`,
-      `Recent average: ${Math.round(trendSummary.recentAverageLiters)} L/day`,
-      `Spike ratio: ${trendSummary.spikeRatio.toFixed(2)}`,
-      `Status: ${trendSummary.hasSpike ? "Potential spike" : "Normal"}`,
-      "Last 3 days liters:",
-      ...trendSummary.lastThreeDays.map((d) => `- ${d.date}: ${d.liters.toLocaleString()} L`),
-    ];
-    return lines.join("\n");
-  }, [trendDays, trendSummary]);
-
-  const meterIntelligence = useMemo(() => {
-    const variability = trendSummary.lastThreeDays.length > 1
-      ? Math.max(...trendSummary.lastThreeDays.map((d) => d.liters)) - Math.min(...trendSummary.lastThreeDays.map((d) => d.liters))
-      : 0;
-
-    const riskScore = Math.min(
-      100,
-      Math.round((trendSummary.spikeRatio * 45) + (variability / 10))
-    );
-
-    const level = riskScore >= 70 ? "High" : riskScore >= 40 ? "Medium" : "Low";
-
-    return { riskScore, level, variability };
-  }, [trendSummary]);
-
-  const optimizationPlan = useMemo(() => {
-    const actions = [];
-
-    if (summary.litersDeltaToTarget > 0) {
-      actions.push("Reduce shower duration by 1-2 minutes for each resident.");
-    }
-    if (trendSummary.hasSpike) {
-      actions.push("Inspect bathrooms and kitchen for continuous flow or hidden leaks.");
-    }
-    if (meterIntelligence.level !== "Low") {
-      actions.push("Shift high-volume activities to planned windows and avoid overlap.");
-    }
-    if (actions.length === 0) {
-      actions.push("Current usage is healthy. Keep your current conservation routine.");
-    }
-
-    const confidence = Math.max(55, Math.min(98, 98 - Math.round(meterIntelligence.variability / 8)));
-
-    return { actions, confidence };
-  }, [summary.litersDeltaToTarget, trendSummary.hasSpike, meterIntelligence]);
-
-  async function copyDiagnostics() {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(diagnosticsText);
-      setCopyStatus("Copied diagnostics.");
-    } catch {
-      setCopyStatus("Unable to copy diagnostics on this browser.");
-    }
-  }
-
   return (
-    <Card className="p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="overflow-hidden border-0 bg-white/90 p-0 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.55)] ring-1 ring-slate-200/80">
+      <SectionHeader
+        badge="Signed In"
+        title="Personal Virtual Meter"
+        subtitle="Live from your usage records and household profiles."
+      />
+
+      <div className="p-5 sm:p-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-black tracking-tight text-slate-900">Personal Virtual Meter</h2>
-          <p className="mt-1 text-sm text-slate-600">Live from your usage records and household profiles.</p>
+          <h3 className="text-base font-black tracking-tight text-slate-900">Real-time usage cockpit</h3>
+          <p className="mt-1 text-sm text-slate-600">Track daily flow, risk signals, and optimization opportunities in one view.</p>
         </div>
         <Button variant="ghost" onClick={load}>Refresh</Button>
       </div>
@@ -583,231 +451,36 @@ function PrivateMeter() {
       {error ? <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-100">{error}</div> : null}
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading your meter...</p> : null}
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric title="Today usage" value={`${summary.todayLiters.toLocaleString()} L`} icon={Droplet} />
         <Metric title="This month usage" value={`${summary.totalLiters.toLocaleString()} L`} icon={Gauge} />
         <Metric title="This month carbon" value={`${summary.totalCarbon.toFixed(3)} kg`} icon={Leaf} />
         <Metric title="Bill forecast" value={summary.billForecast.toFixed(2)} icon={Receipt} />
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <TrendingUp className="h-4 w-4 text-brand-700" /> End-of-month projection
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">
-            {Math.round(summary.projectedMonthLiters).toLocaleString()} L
-          </div>
-          <div className="mt-1 text-xs text-slate-500">
-            Projected carbon: {summary.projectedMonthCarbon.toFixed(3)} kg
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <Target className="h-4 w-4 text-emerald-600" /> Budget status
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">{summary.budgetStatus}</div>
-          <div className="mt-1 text-xs text-slate-500">
-            {summary.litersDeltaToTarget >= 0 ? "+" : ""}{Math.round(summary.litersDeltaToTarget).toLocaleString()} L vs target by month end.
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <AlertTriangle className="h-4 w-4 text-amber-600" /> Meter intelligence
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">{meterIntelligence.level} risk</div>
-          <div className="mt-1 text-xs text-slate-500">
-            Leak/spike risk score: {meterIntelligence.riskScore}/100 · Variability: {Math.round(meterIntelligence.variability)} L
-          </div>
-        </Card>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <Zap className="h-4 w-4 text-violet-600" /> Recommended optimization plan
-          </div>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            {optimizationPlan.actions.map((action, idx) => (
-              <div key={`${action}-${idx}`} className="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
-                {idx + 1}. {action}
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" /> Projection confidence
-          </div>
-          <div className="mt-2 text-lg font-black text-slate-900">{optimizationPlan.confidence}%</div>
-          <div className="mt-2 h-3 w-full rounded-full bg-slate-100">
-            <div
-              className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500"
-              style={{ width: `${optimizationPlan.confidence}%` }}
-            />
-          </div>
-          <div className="mt-2 text-xs text-slate-500">
-            Confidence decreases when recent day-to-day variability is high.
-          </div>
-        </Card>
-      </div>
-
-      <Card className="mt-5 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
-          <div>
-            <span className="font-semibold text-slate-700">Monthly goal progress</span>
-            <div className="mt-1 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setTargetMode("auto")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  targetMode === "auto"
-                    ? "bg-brand-100 text-brand-900 ring-1 ring-brand-200"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Auto target
-              </button>
-              <button
-                type="button"
-                onClick={() => setTargetMode("custom")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  targetMode === "custom"
-                    ? "bg-brand-100 text-brand-900 ring-1 ring-brand-200"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Custom target
-              </button>
-            </div>
-          </div>
-          <span className="text-slate-600">{Math.round(summary.progress)}%</span>
+      <Card className="mt-4 border-0 bg-slate-50/90 p-3.5 ring-1 ring-slate-200/70">
+        <div className="text-sm font-extrabold text-slate-900">Quick status</div>
+        <div className="mt-2 text-sm text-slate-600">
+          Budget: <span className="font-semibold text-slate-900">{summary.budgetStatus}</span>
+          {" · "}
+          Projection: <span className="font-semibold text-slate-900">{Math.round(summary.projectedMonthLiters).toLocaleString()} L</span>
+          {" · "}
+          Spike check: <span className="font-semibold text-slate-900">{trendSummary.hasSpike ? "Attention needed" : "Normal"}</span>
         </div>
-
-        {targetMode === "custom" ? (
-          <div className="mt-3 max-w-xs">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Custom monthly liters target</label>
-            <input
-              type="number"
-              min={1}
-              value={customMonthlyTarget}
-              onChange={(e) => setCustomMonthlyTarget(e.target.value)}
-              className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
-              placeholder="Enter liters"
-            />
-          </div>
-        ) : null}
-
-        <div className="mt-2 h-3 w-full rounded-full bg-slate-100">
-          <div className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500" style={{ width: `${summary.progress}%` }} />
-        </div>
-        <div className="mt-1 text-xs text-slate-500">
-          {summary.totalLiters.toLocaleString()} / {Math.round(summary.targetLiters).toLocaleString()} L
-        </div>
-        <div className="mt-1 text-xs text-slate-500">
-          {summary.usingCustomTarget
-            ? `Custom goal active. Auto recommendation is ${Math.round(summary.baseTargetLiters).toLocaleString()} L.`
-            : "Auto goal from household profiles."}
-        </div>
-        <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-100">
-          Synced weekly target: ~{Math.max(1, Math.round(summary.targetLiters / 4.345)).toLocaleString()} L/week (used by Water Activities goals).
-        </div>
-        {stats?.comparison?.message ? (
-          <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-100">
-            {stats.comparison.message}
-          </div>
-        ) : null}
       </Card>
 
       {trendSummary.hasSpike ? (
-        <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-100">
+        <div className="mt-4 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-800 ring-1 ring-amber-100">
           Potential usage spike: today is {Math.round((trendSummary.spikeRatio - 1) * 100)}% above your recent average ({Math.round(trendSummary.recentAverageLiters)} L/day). Check taps and toilets for leaks.
         </div>
       ) : (
-        <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-100">
+        <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 ring-1 ring-emerald-100">
           Usage status normal: today is within your recent baseline ({Math.round(trendSummary.recentAverageLiters)} L/day).
         </div>
       )}
 
-      <details className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-100">
-        <summary className="cursor-pointer list-none font-semibold text-slate-800">
-          Why this alert triggered
-        </summary>
-        <div className="mt-3 space-y-2 text-xs text-slate-600">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-semibold text-slate-700">Diagnostics</p>
-            <div className="flex items-center gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={copyDiagnostics}>
-                Copy diagnostics
-              </Button>
-              {copyStatus ? <span className="text-[11px] text-slate-500">{copyStatus}</span> : null}
-            </div>
-          </div>
-          <p>
-            Formula: spike ratio = today liters / recent average liters.
-          </p>
-          <p>
-            Trigger rule: show warning when spike ratio >= 1.30.
-          </p>
-          <p>
-            Current values: {Math.round(trendSummary.todayLiters)} L / {Math.round(trendSummary.recentAverageLiters)} L = {trendSummary.spikeRatio.toFixed(2)}.
-          </p>
-          <div>
-            <div className="mb-1 font-semibold text-slate-700">Last 3 days liters</div>
-            <div className="space-y-1">
-              {trendSummary.lastThreeDays.length === 0 ? (
-                <div>No daily usage records available.</div>
-              ) : (
-                trendSummary.lastThreeDays.map((d) => (
-                  <div key={d.date} className="flex items-center justify-between rounded-md bg-white px-2 py-1 ring-1 ring-slate-100">
-                    <span>{d.date}</span>
-                    <span>{d.liters.toLocaleString()} L</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Chart window</span>
-        {[7, 14, 30].map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => setTrendDays(d)}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${trendDays === d ? "bg-brand-100 text-brand-900 ring-1 ring-brand-200" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-          >
-            {d} days
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <MiniTrendChart
-          title="Daily liters"
-          subtitle={`Last ${trendDays} days`}
-          colorClass="stroke-sky-600 fill-sky-600"
-          points={trend}
-          accessor={(p) => p.totalLiters}
-          unit="L"
-        />
-        <MiniTrendChart
-          title="Daily carbon"
-          subtitle={`Last ${trendDays} days`}
-          colorClass="stroke-emerald-600 fill-emerald-600"
-          points={trend}
-          accessor={(p) => p.totalCarbonKg}
-          unit="kg"
-        />
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <Card className="p-4">
+      <div className="mt-4 grid gap-3 lg:grid-cols-2 lg:items-stretch">
+        <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70">
           <div className="text-sm font-extrabold text-slate-900">Recent activities</div>
           {recent.length === 0 ? (
             <p className="mt-3 text-sm text-slate-500">No activities yet. Add your first usage record.</p>
@@ -823,17 +496,21 @@ function PrivateMeter() {
           )}
         </Card>
 
-        <Card className="p-4">
+        <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70">
           <div className="text-sm font-extrabold text-slate-900">Quick actions</div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:grid-cols-1">
+            <Button as={Link} to="/dashboard" className="gap-2" size="sm">
+              <TrendingUp className="h-4 w-4" /> Go to Dashboard
+            </Button>
             <Button as={Link} to="/user/water-activities" className="gap-2" size="sm">
               <Activity className="h-4 w-4" /> Add activity
             </Button>
             <Button as={Link} to="/user/carbon-analytics" variant="ghost" size="sm" className="gap-2">
-              <Target className="h-4 w-4" /> View analytics
+              <ShieldCheck className="h-4 w-4" /> View analytics
             </Button>
           </div>
         </Card>
+      </div>
       </div>
     </Card>
   );
@@ -843,30 +520,24 @@ export function VirtualMeterPage() {
   const { token } = useAuth();
 
   return (
-    <div className="bg-[radial-gradient(circle_at_10%_10%,rgba(14,165,233,0.08),transparent_30%),radial-gradient(circle_at_90%_20%,rgba(16,185,129,0.08),transparent_35%)]">
+    <div className="relative overflow-hidden bg-[linear-gradient(180deg,#f5fbff_0%,#eaf7f0_42%,#f7fafc_100%)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(14,165,233,0.18),transparent_34%),radial-gradient(circle_at_86%_10%,rgba(16,185,129,0.16),transparent_36%),radial-gradient(circle_at_50%_100%,rgba(15,23,42,0.08),transparent_40%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(to_right,rgba(148,163,184,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.18)_1px,transparent_1px)] [background-size:26px_26px]"
+      />
       <Navbar />
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="max-w-4xl">
-          <div className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-800">
-            Advanced meter experience
-          </div>
-          <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Virtual Water Meter</h1>
-          <p className="mt-3 text-sm leading-7 text-slate-600">
-            Monitor usage in a realistic way: predictive estimation before login and intelligent live monitoring after login.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
-            <span className={`rounded-full px-3 py-1 ${token ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
-              Public estimator
-            </span>
-            <span className={`rounded-full px-3 py-1 ${token ? "bg-brand-100 text-brand-800" : "bg-slate-100 text-slate-600"}`}>
-              Personal virtual meter
-            </span>
-          </div>
-        </div>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <Reveal delay={30}>
+          <VirtualMeterLandingIntro token={token} />
+        </Reveal>
 
-        <div className="mt-8">
+        <Reveal delay={200} className="mt-6">
           {token ? <PrivateMeter /> : <PublicEstimator />}
-        </div>
+        </Reveal>
       </div>
       <Footer />
     </div>

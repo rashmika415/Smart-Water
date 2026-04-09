@@ -1,14 +1,16 @@
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
 import clsx from "clsx";
-import { Droplet, LayoutDashboard, Home, Users, Building2, Layers3 } from "lucide-react";
+import { Droplet, LayoutDashboard, Home, Users, Building2, Layers3, ClipboardList } from "lucide-react";
 
 export const ADMIN_NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/users", label: "Manage Users", icon: Users, end: false },
   { to: "/admin/households", label: "Manage Households", icon: Building2, end: false },
   { to: "/admin/households-zones", label: "Households & Zones", icon: Layers3, end: false },
+  { to: "/admin/activities", label: "Manage Activities", icon: ClipboardList, end: false },
 ];
+
 
 export function AdminSidebar() {
   return (

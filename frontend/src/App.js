@@ -13,12 +13,15 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { ManageUsers } from "./pages/admin/ManageUsers";
 import { ManageHouseholds } from "./pages/admin/ManageHouseholds";
 import { AllHouseholdsWithZones } from "./pages/admin/AllHouseholdsWithZones";
+import { ManageActivities } from "./pages/admin/ManageActivities";
 import { UserDashboard } from "./pages/user/UserDashboard";
 import { MyProfile } from "./pages/user/MyProfile";
 import { MyHouseholds } from "./pages/user/MyHouseholds";
 import { HouseholdDetails } from "./pages/user/HouseholdDetails";
 import { EstimatedBill } from "./pages/user/EstimatedBill";
 import { WeatherInsights } from "./pages/user/WeatherInsights";
+import { UserActivities } from "./pages/user/UserActivities";
+
 import { UsageHistory } from "./pages/user/UsageHistory";
 import { WaterActivities } from "./pages/user/WaterActivities";
 import { CarbonAnalytics } from "./pages/user/CarbonAnalytics";
@@ -65,6 +68,7 @@ function App() {
           <Route path="households/:id" element={<HouseholdDetails />} />
           <Route path="estimated-bill" element={<EstimatedBill />} />
           <Route path="weather-insights" element={<WeatherInsights />} />
+          <Route path="activities" element={<UserActivities />} />
         </Route>
         <Route
           path="/admin"
@@ -78,11 +82,13 @@ function App() {
           <Route path="users" element={<ManageUsers />} />
           <Route path="households" element={<ManageHouseholds />} />
           <Route path="households-zones" element={<AllHouseholdsWithZones />} />
+          <Route path="activities" element={<ManageActivities />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
 }
+
 
 export default App;

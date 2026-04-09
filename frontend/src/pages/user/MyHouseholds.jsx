@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { householdsApi } from "../../lib/api";
+import { SRI_LANKA_COUNTRY, SRI_LANKA_PROVINCES, SRI_LANKA_TOWNS } from "../../lib/sriLankaLocations";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 
@@ -19,7 +20,7 @@ export function MyHouseholds() {
     propertyType: "house",
     city: "",
     state: "",
-    country: "",
+    country: SRI_LANKA_COUNTRY,
     zoneName: "",
     zoneNotes: "",
   });
@@ -56,7 +57,11 @@ export function MyHouseholds() {
         name: form.name,
         numberOfResidents: Number(form.numberOfResidents),
         propertyType: form.propertyType,
-        location: { city: form.city, state: form.state || undefined, country: form.country || undefined },
+        location: {
+          city: form.city,
+          state: form.state || undefined,
+          country: SRI_LANKA_COUNTRY,
+        },
       });
       if (form.zoneName.trim()) {
         await householdsApi.createZone(token, created._id, {
@@ -71,7 +76,7 @@ export function MyHouseholds() {
         propertyType: "house",
         city: "",
         state: "",
-        country: "",
+        country: SRI_LANKA_COUNTRY,
         zoneName: "",
         zoneNotes: "",
       });
@@ -160,9 +165,44 @@ export function MyHouseholds() {
               <option value="house">house</option>
               <option value="apartment">apartment</option>
             </select>
-            <input className="h-11 rounded-xl border border-slate-200 px-4 text-sm" placeholder="City" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} required />
-            <input className="h-11 rounded-xl border border-slate-200 px-4 text-sm" placeholder="State (optional)" value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} />
-            <input className="h-11 rounded-xl border border-slate-200 px-4 text-sm" placeholder="Country (optional)" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} />
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Province</label>
+              <select
+                className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
+                value={form.state}
+                onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+                required
+              >
+                <option value="">Select province</option>
+                {SRI_LANKA_PROVINCES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Town / City</label>
+              <input
+                list="lk-towns"
+                className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
+                placeholder="Start typing to search..."
+                value={form.city}
+                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                required
+              />
+              <datalist id="lk-towns">
+                {SRI_LANKA_TOWNS.map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
+              <input
+                className="h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm"
+                value={SRI_LANKA_COUNTRY}
+                readOnly
+              />
+            </div>
             <input
               className="h-11 rounded-xl border border-slate-200 px-4 text-sm"
               placeholder="First zone name (optional)"

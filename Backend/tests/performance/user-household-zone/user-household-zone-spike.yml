@@ -1,0 +1,27 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 20
+      arrivalRate: 3
+      name: baseline
+    - duration: 30
+      arrivalRate: 15
+      name: spike
+    - duration: 30
+      arrivalRate: 6
+      name: recovery
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: user_household_spike_reads
+    flow:
+      - get:
+          url: "/api/users/profile"
+      - get:
+          url: "/api/households/my-households"
+      - get:
+          url: "/api/households/my-with-zones"
+
