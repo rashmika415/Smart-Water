@@ -2,12 +2,17 @@ import React from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../ui/Button";
-import { Droplet, Home, LayoutDashboard, User, Building2, Receipt, CloudSun, LogOut, ClipboardList } from "lucide-react";
+
+import { Droplet, Home, LayoutDashboard, User, Building2, Receipt, CloudSun, LogOut, Activity, Leaf, Waves, ClipboardList } from "lucide-react";
+
 import clsx from "clsx";
 
 const nav = [
   { to: "/user", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/user/profile", label: "My Profile", icon: User },
+  { to: "/user/water-activities", label: "Water Activities", icon: Waves },
+  { to: "/user/usage", label: "Usage History", icon: Activity },
+  { to: "/user/carbon-analytics", label: "Carbon Analytics", icon: Leaf },
   { to: "/user/households", label: "My Households", icon: Building2 },
   { to: "/user/estimated-bill", label: "Estimated Bill", icon: Receipt },
   { to: "/user/weather-insights", label: "Weather Insights", icon: CloudSun },

@@ -4,6 +4,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { VirtualMeterPage } from "./pages/VirtualMeterPage";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminRoute } from "./components/admin/AdminRoute";
 import { UserLayout } from "./components/user/UserLayout";
@@ -20,6 +21,10 @@ import { HouseholdDetails } from "./pages/user/HouseholdDetails";
 import { EstimatedBill } from "./pages/user/EstimatedBill";
 import { WeatherInsights } from "./pages/user/WeatherInsights";
 import { UserActivities } from "./pages/user/UserActivities";
+
+import { UsageHistory } from "./pages/user/UsageHistory";
+import { WaterActivities } from "./pages/user/WaterActivities";
+import { CarbonAnalytics } from "./pages/user/CarbonAnalytics";
 import { useAuth } from "./auth/AuthContext";
 
 function App() {
@@ -29,6 +34,7 @@ function App() {
     <div className="App">
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/virtual-meter" element={<VirtualMeterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route
@@ -55,6 +61,9 @@ function App() {
         >
           <Route index element={<UserDashboard />} />
           <Route path="profile" element={<MyProfile />} />
+          <Route path="water-activities" element={<WaterActivities />} />
+          <Route path="usage" element={<UsageHistory />} />
+          <Route path="carbon-analytics" element={<CarbonAnalytics />} />
           <Route path="households" element={<MyHouseholds />} />
           <Route path="households/:id" element={<HouseholdDetails />} />
           <Route path="estimated-bill" element={<EstimatedBill />} />
