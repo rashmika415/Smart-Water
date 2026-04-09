@@ -178,6 +178,24 @@ export const zonesApi = {
     }),
 };
 
+export const adminNotificationsApi = {
+  list: async (token, { limit = 20 } = {}) =>
+    apiFetch(`/api/admin-notifications?limit=${encodeURIComponent(String(limit))}`, {
+      method: "GET",
+      token,
+    }),
+  markRead: async (token, notificationId) =>
+    apiFetch(`/api/admin-notifications/${notificationId}/read`, {
+      method: "PATCH",
+      token,
+    }),
+  markAllRead: async (token) =>
+    apiFetch("/api/admin-notifications/read-all", {
+      method: "PATCH",
+      token,
+    }),
+};
+
 
 export const activitiesApi = {
   list: async (token) => 
