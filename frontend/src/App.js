@@ -3,13 +3,12 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
-import { DashboardPage } from "./pages/DashboardPage";
 import { VirtualMeterPage } from "./pages/VirtualMeterPage";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminRoute } from "./components/admin/AdminRoute";
 import { UserLayout } from "./components/user/UserLayout";
 import { UserRoute } from "./components/user/UserRoute";
-import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import { ManageUsers } from "./pages/admin/ManageUsers";
 import { ManageHouseholds } from "./pages/admin/ManageHouseholds";
 import { AllHouseholdsWithZones } from "./pages/admin/AllHouseholdsWithZones";
@@ -47,10 +46,7 @@ function App() {
               : <Navigate to="/login" replace />
           }
         />
-        <Route
-          path="/legacy-dashboard"
-          element={token ? <DashboardPage /> : <Navigate to="/login" replace />}
-        />
+        <Route path="/legacy-dashboard" element={<Navigate to="/user" replace />} />
         <Route
           path="/user"
           element={
