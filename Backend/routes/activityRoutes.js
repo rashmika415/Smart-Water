@@ -11,7 +11,7 @@ router.get("/", verifyToken, activityController.getActivities);
 router.get("/:id", verifyToken, activityController.getActivityById);
 
 // CREATE - Add a new activity
-router.post("/", verifyToken, authorizeRoles("admin"), activityController.createActivity);
+router.post("/", verifyToken, authorizeRoles("admin", "user"), activityController.createActivity);
 
 // UPDATE - Update an activity by ID
 router.put("/:id", verifyToken, authorizeRoles("admin"), activityController.updateActivity);

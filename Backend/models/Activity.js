@@ -20,11 +20,11 @@ const activitySchema = new mongoose.Schema(
     },
     assignedStaff: {
       type: String,
-      required: true,
+      required: false,
     },
     staffEmail: {
       type: String,
-      required: true,
+      required: false,
     },
     notes: {
       type: String,
@@ -34,6 +34,15 @@ const activitySchema = new mongoose.Schema(
       type: String,
       enum: ["Pending", "In-Progress", "Completed"],
       default: "Pending",
+    },
+    reportedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+    isIssue: {
+      type: Boolean,
+      default: false,
     },
   },
   {
