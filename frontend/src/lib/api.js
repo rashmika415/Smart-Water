@@ -106,5 +106,46 @@ export const householdsApi = {
       method: "GET",
       token,
     }),
+  myHouseholds: async (token) =>
+    apiFetch("/api/households/my-households", {
+      method: "GET",
+      token,
+    }),
+  myWithZones: async (token) =>
+    apiFetch("/api/households/my-with-zones", {
+      method: "GET",
+      token,
+    }),
+  create: async (token, body) =>
+    apiFetch("/api/households", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  zones: async (token, householdId) =>
+    apiFetch(`/api/households/${householdId}/zones`, {
+      method: "GET",
+      token,
+    }),
+  createZone: async (token, householdId, body) =>
+    apiFetch(`/api/households/${householdId}/zones`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+};
+
+export const zonesApi = {
+  update: async (token, zoneId, body) =>
+    apiFetch(`/api/zones/${zoneId}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, zoneId) =>
+    apiFetch(`/api/zones/${zoneId}`, {
+      method: "DELETE",
+      token,
+    }),
 };
 
