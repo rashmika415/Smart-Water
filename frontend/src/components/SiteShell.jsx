@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Droplet, Menu, X, ArrowUpRight, Mail, Phone, MapPin } from "lucide-react";
+import { Droplet, Mail, Phone, MapPin } from "lucide-react";
 import { Button } from "./ui/Button";
 import { useAuth } from "../auth/AuthContext";
 
@@ -14,37 +14,30 @@ const navItems = [
 
 export function Navbar() {
   const { token, logout, user } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  function closeMobile() {
-    setMobileOpen(false);
-  }
 
   return (
     <div className="sticky top-0 z-40">
-      <div className="mx-auto w-full max-w-[108rem] px-4 sm:px-6 lg:px-10">
-        <div className="mt-2 rounded-2xl border border-slate-200/70 bg-white/80 px-3 py-2.5 shadow-lg backdrop-blur-xl sm:px-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3" onClick={closeMobile}>
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between py-6 sm:py-8">
+            <Link to="/" className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
                 <Droplet className="h-5 w-5" />
               </span>
               <div className="leading-tight">
-                <div className="text-sm font-extrabold tracking-tight text-slate-900">SmartWater</div>
+                <div className="text-sm font-extrabold tracking-tight text-slate-900">
+                  SmartWater
+                </div>
                 <div className="text-[11px] text-slate-500">Track. Conserve. Save.</div>
               </div>
-              <span className="hidden rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100 sm:inline-flex">
-                Live Insights
-              </span>
             </Link>
 
-            <div className="hidden items-center gap-1 rounded-full bg-slate-50 p-1 ring-1 ring-slate-200 lg:flex">
+            <div className="hidden items-center gap-6 lg:flex">
               {navItems.map((item) => (
                 item.route ? (
                   <Link
                     key={item.to}
                     to={item.to}
-                    className="rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900"
+                    className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
                   >
                     {item.label}
                   </Link>
@@ -52,7 +45,7 @@ export function Navbar() {
                   <a
                     key={item.to}
                     href={item.to}
-                    className="rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900"
+                    className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
                   >
                     {item.label}
                   </a>
@@ -60,7 +53,7 @@ export function Navbar() {
               ))}
             </div>
 
-            <div className="hidden items-center gap-2 lg:flex">
+            <div className="flex items-center gap-3">
               {token ? (
                 <>
                   <Button as={Link} to="/dashboard" variant="ghost" size="sm">
@@ -80,79 +73,14 @@ export function Navbar() {
                   <Button as={NavLink} to="/login" variant="ghost" size="sm">
                     Login
                   </Button>
-                  <Button as={NavLink} to="/register" size="sm" className="gap-1.5">
-                    Register <ArrowUpRight className="h-4 w-4" />
+                  <Button as={NavLink} to="/register" size="sm">
+                    Register
                   </Button>
                 </>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => setMobileOpen((v) => !v)}
-              className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700 ring-1 ring-slate-200 lg:hidden"
-              aria-label="Toggle navigation menu"
-            >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
           </div>
-
-          {mobileOpen ? (
-            <div className="mt-3 space-y-3 border-t border-slate-200 pt-3 lg:hidden">
-              <div className="grid gap-1">
-                {navItems.map((item) =>
-                  item.route ? (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={closeMobile}
-                      className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                    >
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <a
-                      key={item.to}
-                      href={item.to}
-                      onClick={closeMobile}
-                      className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                    >
-                      {item.label}
-                    </a>
-                  )
-                )}
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                {token ? (
-                  <>
-                    <Button as={Link} to="/dashboard" variant="ghost" size="sm" onClick={closeMobile}>
-                      Dashboard
-                    </Button>
-                    {user?.role === "admin" ? (
-                      <Button as={Link} to="/admin" variant="ghost" size="sm" onClick={closeMobile}>
-                        Admin
-                      </Button>
-                    ) : null}
-                    <Button onClick={logout} variant="dark" size="sm">
-                      Logout
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button as={NavLink} to="/login" variant="ghost" size="sm" onClick={closeMobile}>
-                      Login
-                    </Button>
-                    <Button as={NavLink} to="/register" size="sm" onClick={closeMobile}>
-                      Register
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          ) : null}
         </div>
-      </div>
     </div>
   );
 }
