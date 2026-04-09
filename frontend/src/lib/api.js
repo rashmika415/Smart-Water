@@ -157,6 +157,19 @@ export const activitiesApi = {
     apiFetch(`/api/activities/${id}`, { method: "GET", token }),
   create: async (token, body) =>
     apiFetch("/api/activities", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/api/activities/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/api/activities/${id}`, { method: "DELETE", token }),
+};
 
 export const usageApi = {
   list: async (
@@ -191,26 +204,17 @@ export const usageApi = {
     }),
   create: async (token, body) =>
     apiFetch("/usage", {
-
       method: "POST",
       token,
       body: JSON.stringify(body),
     }),
   update: async (token, id, body) =>
-    apiFetch(`/api/activities/${id}`, {
-
     apiFetch(`/usage/${id}`, {
       method: "PUT",
       token,
       body: JSON.stringify(body),
     }),
   delete: async (token, id) =>
-
-    apiFetch(`/api/activities/${id}`, { method: "DELETE", token }),
-};
-
-
-
     apiFetch(`/usage/${id}`, {
       method: "DELETE",
       token,
