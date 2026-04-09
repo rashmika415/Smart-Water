@@ -75,9 +75,9 @@ export function ManageActivities() {
     if (!q) return activities;
     return activities.filter((a) => {
       return (
-        a.activityType.toLowerCase().includes(q) ||
-        a.location.toLowerCase().includes(q) ||
-        a.assignedStaff.toLowerCase().includes(q)
+        (a.activityType?.toLowerCase().includes(q) || false) ||
+        (a.location?.toLowerCase().includes(q) || false) ||
+        (a.assignedStaff?.toLowerCase().includes(q) || false)
       );
     });
   }, [activities, query]);
@@ -99,8 +99,8 @@ export function ManageActivities() {
       scheduledDate: a.scheduledDate,
       scheduledTime: a.scheduledTime,
       location: a.location,
-      assignedStaff: a.assignedStaff,
-      staffEmail: a.staffEmail,
+      assignedStaff: a.assignedStaff || "",
+      staffEmail: a.staffEmail || "",
       notes: a.notes || "",
       status: a.status,
     });
@@ -324,11 +324,11 @@ export function ManageActivities() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           <div className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200">
-                            {a.assignedStaff.charAt(0)}
+                            {a.assignedStaff ? a.assignedStaff.charAt(0) : "U"}
                           </div>
                           <div>
-                            <div className="text-xs font-bold text-slate-900">{a.assignedStaff}</div>
-                            <div className="text-[10px] lowercase text-slate-400 font-medium">{a.staffEmail}</div>
+                            <div className="text-xs font-bold text-slate-900">{a.assignedStaff || "Unassigned"}</div>
+                            <div className="text-[10px] lowercase text-slate-400 font-medium">{a.staffEmail || "no notification email"}</div>
                           </div>
                         </div>
                       </td>
@@ -405,9 +405,11 @@ export function ManageActivities() {
                 <div>
                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Assigned Personnel</div>
                     <div className="mt-1 flex items-center gap-2">
-                         <div className="h-6 w-6 rounded-full bg-brand-100 text-[10px] font-bold text-brand-700 grid place-items-center ring-1 ring-brand-200">{viewActivity.assignedStaff.charAt(0)}</div>
-                         <div className="text-sm font-bold text-slate-900">{viewActivity.assignedStaff}</div>
-                         <div className="text-xs text-slate-500 font-medium italic">({viewActivity.staffEmail})</div>
+                         <div className="h-6 w-6 rounded-full bg-brand-100 text-[10px] font-bold text-brand-700 grid place-items-center ring-1 ring-brand-200">
+                           {viewActivity.assignedStaff ? viewActivity.assignedStaff.charAt(0) : "U"}
+                         </div>
+                         <div className="text-sm font-bold text-slate-900">{viewActivity.assignedStaff || "Unassigned"}</div>
+                         {viewActivity.staffEmail && <div className="text-xs text-slate-500 font-medium italic">({viewActivity.staffEmail})</div>}
                     </div>
                 </div>
             </div>
