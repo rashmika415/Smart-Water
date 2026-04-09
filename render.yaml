@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: smart-water-backend
+    runtime: node
+    rootDir: Backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true

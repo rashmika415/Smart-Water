@@ -3,7 +3,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { activitiesApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Search, Pencil, Trash2, Eye, Plus, Calendar, MapPin, User, Clock, CheckCircle2, Timer, AlertCircle } from "lucide-react";
+import { Search, Pencil, Trash2, Eye, Plus, Calendar, MapPin, Clock, CheckCircle2, Timer, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
 function Modal({ title, children, onClose }) {
