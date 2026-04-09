@@ -20,6 +20,7 @@ import { HouseholdDetails } from "./pages/user/HouseholdDetails";
 import { EstimatedBill } from "./pages/user/EstimatedBill";
 import { WeatherInsights } from "./pages/user/WeatherInsights";
 import { UsageHistory } from "./pages/user/UsageHistory";
+import { WaterActivities } from "./pages/user/WaterActivities";
 import { CarbonAnalytics } from "./pages/user/CarbonAnalytics";
 import { useAuth } from "./auth/AuthContext";
 
@@ -57,6 +58,7 @@ function App() {
         >
           <Route index element={<UserDashboard />} />
           <Route path="profile" element={<MyProfile />} />
+          <Route path="water-activities" element={<WaterActivities />} />
           <Route path="usage" element={<UsageHistory />} />
           <Route path="carbon-analytics" element={<CarbonAnalytics />} />
           <Route path="households" element={<MyHouseholds />} />

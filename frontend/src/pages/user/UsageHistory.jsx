@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { usageApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, RefreshCw, Pencil, Trash2, Eye } from "lucide-react";
 
 const ACTIVITY_OPTIONS = [
   "",
@@ -20,6 +21,7 @@ const ACTIVITY_OPTIONS = [
 ];
 
 const SOURCE_OPTIONS = ["", "manual", "preset", "imported"];
+const SAVED_VIEWS_STORAGE_KEY = "smartwater.usageSavedViews";
 
 const SORT_OPTIONS = [
   { value: "-occurredAt", label: "Newest first" },
@@ -35,6 +37,25 @@ const INPUT_MODES = {
   DURATION: "duration",
   COUNT: "count",
 };
+
+function formatDateInput(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfMonthInput() {
+  const now = new Date();
+  return formatDateInput(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+
+function csvEscape(value) {
+  const raw = String(value ?? "");
+  if (raw.includes(",") || raw.includes("\n") || raw.includes("\"")) {
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
+  return raw;
+}
 
 function defaultForm() {
   return {
@@ -292,6 +313,18 @@ function UsageDetailsModal({ usage, loading, onClose, error }) {
                 <dd>{Number(usage.carbonFootprint?.energyKwh || 0).toFixed(2)}</dd>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <dt className="text-slate-500">Equivalent car distance</dt>
+                <dd>{Number(usage.carbonFootprint?.equivalents?.carKm || 0).toFixed(2)} km</dd>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <dt className="text-slate-500">Equivalent trees</dt>
+                <dd>{Number(usage.carbonFootprint?.equivalents?.trees || 0).toFixed(3)}</dd>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <dt className="text-slate-500">Equivalent phone charges</dt>
+                <dd>{Number(usage.carbonFootprint?.equivalents?.smartphones || 0).toFixed(0)}</dd>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <dt className="text-slate-500">Notes</dt>
                 <dd>{usage.notes || "-"}</dd>
               </div>
@@ -328,6 +361,28 @@ function buildUsagePayload(form) {
   } else {
     payload.count = Number(form.count);
     payload.litersPerUnit = Number(form.litersPerUnit);
+  }
+
+  return payload;
+}
+
+function buildPayloadFromUsageRecord(usage) {
+  const payload = {
+    activityType: usage.activityType,
+    source: usage.source || "manual",
+  };
+
+  if (usage.notes) payload.notes = usage.notes;
+  if (usage.occurredAt) payload.occurredAt = new Date(usage.occurredAt).toISOString();
+
+  if (usage.durationMinutes != null && usage.flowRateLpm != null) {
+    payload.durationMinutes = Number(usage.durationMinutes);
+    payload.flowRateLpm = Number(usage.flowRateLpm);
+  } else if (usage.count != null && usage.litersPerUnit != null) {
+    payload.count = Number(usage.count);
+    payload.litersPerUnit = Number(usage.litersPerUnit);
+  } else {
+    payload.liters = Number(usage.liters || 0);
   }
 
   return payload;
@@ -371,8 +426,12 @@ export function UsageHistory() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [sort, setSort] = useState("-occurredAt");
+  const [savedViews, setSavedViews] = useState([]);
+  const [viewName, setViewName] = useState("");
+  const [selectedViewId, setSelectedViewId] = useState("");
 
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -380,7 +439,6 @@ export function UsageHistory() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const [createOpen, setCreateOpen] = useState(false);
   const [editingUsageId, setEditingUsageId] = useState("");
   const [viewingUsageId, setViewingUsageId] = useState("");
   const [selectedUsage, setSelectedUsage] = useState(null);
@@ -389,6 +447,24 @@ export function UsageHistory() {
   const [form, setForm] = useState(defaultForm());
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [undoingBulkDelete, setUndoingBulkDelete] = useState(false);
+  const [lastBulkDeleted, setLastBulkDeleted] = useState([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_VIEWS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setSavedViews(parsed);
+    } catch {
+      setSavedViews([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(SAVED_VIEWS_STORAGE_KEY, JSON.stringify(savedViews));
+  }, [savedViews]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -426,6 +502,10 @@ export function UsageHistory() {
     setPage(1);
   }, [activityType, source, startDate, endDate, sort]);
 
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [items, page, activityType, source, startDate, endDate, sort, search]);
+
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return items;
@@ -438,23 +518,189 @@ export function UsageHistory() {
     });
   }, [items, search]);
 
+  const selectedVisibleItems = useMemo(
+    () => visibleItems.filter((item) => selectedIds.includes(item._id)),
+    [visibleItems, selectedIds]
+  );
+
+  const selectedVisibleCount = selectedVisibleItems.length;
+
   function clearFilters() {
     setActivityType("");
     setSource("");
     setStartDate("");
     setEndDate("");
     setSort("-occurredAt");
+    setSelectedViewId("");
   }
 
-  function openCreate() {
-    setCreateOpen(true);
-    setEditingUsageId("");
-    setForm(defaultForm());
-    setFormError("");
+  function applyDatePreset(preset) {
+    const today = new Date();
+    const end = formatDateInput(today);
+
+    if (preset === "today") {
+      setStartDate(end);
+      setEndDate(end);
+      return;
+    }
+
+    if (preset === "7d") {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 6);
+      setStartDate(formatDateInput(start));
+      setEndDate(end);
+      return;
+    }
+
+    if (preset === "30d") {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 29);
+      setStartDate(formatDateInput(start));
+      setEndDate(end);
+      return;
+    }
+
+    if (preset === "month") {
+      setStartDate(startOfMonthInput());
+      setEndDate(end);
+    }
+  }
+
+  function saveCurrentView() {
+    const name = viewName.trim();
+    if (!name) {
+      setError("View name is required.");
+      return;
+    }
+
+    const view = {
+      id: `view-${Date.now()}`,
+      name,
+      filters: {
+        activityType,
+        source,
+        startDate,
+        endDate,
+        sort,
+      },
+    };
+
+    setSavedViews((prev) => [view, ...prev]);
+    setSelectedViewId(view.id);
+    setViewName("");
+    setNotice(`Saved view "${name}".`);
+    setError("");
+  }
+
+  function applySavedView(viewId) {
+    setSelectedViewId(viewId);
+    const view = savedViews.find((item) => item.id === viewId);
+    if (!view) return;
+    setActivityType(view.filters?.activityType || "");
+    setSource(view.filters?.source || "");
+    setStartDate(view.filters?.startDate || "");
+    setEndDate(view.filters?.endDate || "");
+    setSort(view.filters?.sort || "-occurredAt");
+    setNotice(`Applied view "${view.name}".`);
+  }
+
+  function deleteSavedView() {
+    if (!selectedViewId) return;
+    const deleting = savedViews.find((item) => item.id === selectedViewId);
+    setSavedViews((prev) => prev.filter((item) => item.id !== selectedViewId));
+    setSelectedViewId("");
+    if (deleting?.name) {
+      setNotice(`Deleted view "${deleting.name}".`);
+    }
+  }
+
+  function toggleSelected(id) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
+  }
+
+  function toggleSelectAllVisible() {
+    const visibleIds = visibleItems.map((item) => item._id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+    setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  }
+
+  function exportSelectedToCsv() {
+    const selectedRows = selectedVisibleItems;
+    if (selectedRows.length === 0) {
+      setError("Select at least one row to export.");
+      return;
+    }
+
+    const headers = ["Activity", "Liters", "CarbonKg", "Source", "OccurredAt", "Notes"];
+    const rows = selectedRows.map((item) => [
+      item.activityType || "",
+      Number(item.liters || 0),
+      Number(item.carbonFootprint?.carbonKg || 0).toFixed(3),
+      item.source || "manual",
+      item.occurredAt ? new Date(item.occurredAt).toISOString() : "",
+      item.notes || "",
+    ]);
+    const csvContent = [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `usage-history-selected-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotice(`Exported ${selectedRows.length} selected record(s).`);
+    setError("");
+  }
+
+  async function bulkDeleteSelected() {
+    if (selectedVisibleItems.length === 0) {
+      setError("Select at least one row to bulk delete.");
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedVisibleItems.length} selected record(s)?`)) return;
+
+    setBulkDeleting(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await Promise.all(selectedVisibleItems.map((item) => usageApi.delete(token, item._id)));
+      setLastBulkDeleted(selectedVisibleItems);
+      setSelectedIds([]);
+      setNotice(`Deleted ${selectedVisibleItems.length} record(s). You can undo this action.`);
+      await load();
+    } catch (e) {
+      setError(e?.message || "Failed to bulk delete selected records");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  async function undoBulkDelete() {
+    if (lastBulkDeleted.length === 0) return;
+
+    setUndoingBulkDelete(true);
+    setError("");
+
+    try {
+      await Promise.all(lastBulkDeleted.map((item) => usageApi.create(token, buildPayloadFromUsageRecord(item))));
+      setNotice(`Restored ${lastBulkDeleted.length} record(s).`);
+      setLastBulkDeleted([]);
+      await load();
+    } catch (e) {
+      setError(e?.message || "Failed to undo bulk delete");
+    } finally {
+      setUndoingBulkDelete(false);
+    }
   }
 
   function openEdit(item) {
-    setCreateOpen(false);
     setEditingUsageId(item._id);
     setFormError("");
 
@@ -481,7 +727,6 @@ export function UsageHistory() {
   }
 
   function closeModal() {
-    setCreateOpen(false);
     setEditingUsageId("");
     setFormError("");
   }
@@ -524,13 +769,8 @@ export function UsageHistory() {
 
     try {
       const payload = buildUsagePayload(form);
-      if (editingUsageId) {
-        await usageApi.update(token, editingUsageId, payload);
-        setNotice("Usage record updated successfully.");
-      } else {
-        await usageApi.create(token, payload);
-        setNotice("Usage record created successfully.");
-      }
+      await usageApi.update(token, editingUsageId, payload);
+      setNotice("Usage record updated successfully.");
       closeModal();
       await load();
     } catch (e2) {
@@ -559,12 +799,15 @@ export function UsageHistory() {
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900">Water usage history</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Track water records and manage create, edit, and delete operations.
+            Review, filter, edit, and manage your previously logged water records.
           </p>
         </div>
-        <Button type="button" className="gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Add usage
-        </Button>
+        <Link
+          to="/user/water-activities"
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+        >
+          Go to Water Activities
+        </Link>
       </div>
 
       <Card className="mt-6 p-5">
@@ -644,6 +887,36 @@ export function UsageHistory() {
           </div>
         </div>
 
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={() => applyDatePreset("today")}>Today</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => applyDatePreset("7d")}>Last 7 days</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => applyDatePreset("30d")}>Last 30 days</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => applyDatePreset("month")}>This month</Button>
+        </div>
+
+        <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_auto_auto]">
+          <input
+            value={viewName}
+            onChange={(e) => setViewName(e.target.value)}
+            placeholder="Save current filters as a view"
+            className="h-10 rounded-xl border border-slate-200 px-3 text-sm"
+          />
+          <Button type="button" variant="ghost" onClick={saveCurrentView}>Save view</Button>
+          <div className="flex gap-2">
+            <select
+              value={selectedViewId}
+              onChange={(e) => applySavedView(e.target.value)}
+              className="h-10 min-w-[180px] rounded-xl border border-slate-200 px-3 text-sm"
+            >
+              <option value="">Saved views</option>
+              {savedViews.map((view) => (
+                <option key={view.id} value={view.id}>{view.name}</option>
+              ))}
+            </select>
+            <Button type="button" variant="ghost" onClick={deleteSavedView} disabled={!selectedViewId}>Delete</Button>
+          </div>
+        </div>
+
         <div className="relative mt-4 max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -667,11 +940,62 @@ export function UsageHistory() {
         </div>
       ) : null}
 
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Selected rows: {selectedVisibleCount}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={exportSelectedToCsv}
+            disabled={selectedVisibleCount === 0}
+          >
+            Export selected CSV
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="dark"
+            onClick={bulkDeleteSelected}
+            disabled={selectedVisibleCount === 0 || bulkDeleting}
+          >
+            {bulkDeleting ? "Deleting..." : "Bulk delete selected"}
+          </Button>
+        </div>
+      </div>
+
+      {lastBulkDeleted.length > 0 ? (
+        <div className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-100">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>{lastBulkDeleted.length} record(s) deleted.</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={undoBulkDelete}
+              disabled={undoingBulkDelete}
+            >
+              {undoingBulkDelete ? "Restoring..." : "Undo delete"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <Card className="mt-6 overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <tr>
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={visibleItems.length > 0 && visibleItems.every((item) => selectedIds.includes(item._id))}
+                    onChange={toggleSelectAllVisible}
+                    aria-label="Select all visible rows"
+                  />
+                </th>
                 <th className="px-4 py-3">Activity</th>
                 <th className="px-4 py-3">Liters</th>
                 <th className="px-4 py-3">Carbon (kg)</th>
@@ -683,19 +1007,27 @@ export function UsageHistory() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     Loading usage records...
                   </td>
                 </tr>
               ) : visibleItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     No usage records found.
                   </td>
                 </tr>
               ) : (
                 visibleItems.map((item) => (
                   <tr key={item._id} className="hover:bg-slate-50/80">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item._id)}
+                        onChange={() => toggleSelected(item._id)}
+                        aria-label={`Select ${item.activityType || "usage"}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium text-slate-900">{item.activityType || "-"}</td>
                     <td className="px-4 py-3">{Number(item.liters || 0).toLocaleString()}</td>
                     <td className="px-4 py-3">{Number(item.carbonFootprint?.carbonKg || 0).toFixed(3)}</td>
@@ -764,18 +1096,6 @@ export function UsageHistory() {
           </Button>
         </div>
       </div>
-
-      {createOpen ? (
-        <UsageModal
-          title="Add usage record"
-          form={form}
-          setForm={setForm}
-          saving={saving}
-          onSubmit={submitForm}
-          onClose={closeModal}
-          error={formError}
-        />
-      ) : null}
 
       {editingUsageId ? (
         <UsageModal

@@ -86,22 +86,26 @@ export function Navbar() {
 }
 
 export function Footer() {
+  const { token } = useAuth();
+
   return (
     <footer id="contact" className="relative mt-24 overflow-hidden border-t border-slate-200/80 bg-gradient-to-b from-white via-slate-50 to-sky-50">
       <div className="pointer-events-none absolute left-0 top-0 h-60 w-60 rounded-full bg-sky-200/30 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
 
       <div className="relative mx-auto w-full max-w-[108rem] px-4 py-14 sm:px-6 lg:px-10">
-        <div className="grid gap-4 rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
-          <div>
-            <div className="text-lg font-black tracking-tight text-slate-900">Start reducing your water bill today</div>
-            <div className="mt-1 text-sm text-slate-600">Create a free account and get your first usage insights in minutes.</div>
+        {!token ? (
+          <div className="grid gap-4 rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
+            <div>
+              <div className="text-lg font-black tracking-tight text-slate-900">Start reducing your water bill today</div>
+              <div className="mt-1 text-sm text-slate-600">Create a free account and get your first usage insights in minutes.</div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button as={Link} to="/register" size="sm">Get Started</Button>
+              <Button as={Link} to="/virtual-meter" variant="ghost" size="sm">Open Virtual Meter</Button>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button as={Link} to="/register" size="sm">Get Started</Button>
-            <Button as={Link} to="/virtual-meter" variant="ghost" size="sm">Open Virtual Meter</Button>
-          </div>
-        </div>
+        ) : null}
 
         <div className="mt-12 grid gap-10 lg:grid-cols-5">
           <div className="lg:col-span-2">
