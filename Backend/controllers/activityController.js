@@ -7,12 +7,20 @@ const getEmailTemplate = require("../services/activityEmailTemplate");
 exports.createActivity = async (req, res) => {
   try {
     const { activityType, scheduledDate, scheduledTime, location, assignedStaff, staffEmail, notes, status } = req.body;
+    const userRole = req.user?.role?.toLowerCase();
+    const userId = req.user?.id;
 
     // Validation: Required fields
-    if (!activityType || !scheduledDate || !scheduledTime || !location || !assignedStaff || !staffEmail) {
+    const requiredFields = userRole === "admin" 
+      ? ["activityType", "scheduledDate", "scheduledTime", "location", "assignedStaff", "staffEmail"]
+      : ["activityType", "scheduledDate", "scheduledTime", "location"];
+
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: activityType, scheduledDate, scheduledTime, location, assignedStaff, staffEmail",
+        message: `Missing required fields: ${missingFields.join(", ")}`,
       });
     }
 
@@ -29,42 +37,48 @@ exports.createActivity = async (req, res) => {
     }
 
     // Create new activity
-    const activity = new Activity({
+    const activityData = {
       activityType,
       scheduledDate,
       scheduledTime,
       location,
-      assignedStaff,
-      staffEmail,
       notes: notes || "",
       status: status || "Pending",
-    });
+      reportedBy: userId,
+      isIssue: userRole === "user",
+    };
 
+    if (assignedStaff) activityData.assignedStaff = assignedStaff;
+    if (staffEmail) activityData.staffEmail = staffEmail;
+
+    const activity = new Activity(activityData);
     const savedActivity = await activity.save();
 
-    // Send email notification
-    try {
-      const emailHtml = getEmailTemplate(
-        "New Activity Assigned",
-        "You have been assigned a new maintenance activity. Please find the details below:",
-        [
-          { label: "Activity Type", value: activityType },
-          { label: "Location", value: location },
-          { label: "Date", value: scheduledDate },
-          { label: "Time", value: scheduledTime },
-          { label: "Status", value: status || "Pending" }
-        ],
-        "success"
-      );
+    // Send email notification only if staff is assigned
+    if (staffEmail) {
+      try {
+        const emailHtml = getEmailTemplate(
+          "New Activity Assigned",
+          "You have been assigned a new maintenance activity. Please find the details below:",
+          [
+            { label: "Activity Type", value: activityType },
+            { label: "Location", value: location },
+            { label: "Date", value: scheduledDate },
+            { label: "Time", value: scheduledTime },
+            { label: "Status", value: status || "Pending" }
+          ],
+          "success"
+        );
 
-      await sendEmail(
-        staffEmail,
-        "New Water Maintenance Activity Assigned",
-        `New Activity: ${activityType} at ${location}`,
-        emailHtml
-      );
-    } catch (emailError) {
-      console.error("Failed to send assignment email:", emailError);
+        await sendEmail(
+          staffEmail,
+          "New Water Maintenance Activity Assigned",
+          `New Activity: ${activityType} at ${location}`,
+          emailHtml
+        );
+      } catch (emailError) {
+        console.error("Failed to send assignment email:", emailError);
+      }
     }
 
     res.status(201).json({
@@ -185,30 +199,32 @@ exports.updateActivity = async (req, res) => {
       });
     }
 
-    // Send update email notification
-    try {
-      const emailHtml = getEmailTemplate(
-        "Activity Updated",
-        "An activity assigned to you has been updated. Please review the changes below:",
-        [
-          { label: "Activity Type", value: updatedActivity.activityType },
-          { label: "Location", value: updatedActivity.location },
-          { label: "Date", value: updatedActivity.scheduledDate },
-          { label: "Time", value: updatedActivity.scheduledTime },
-          { label: "Status", value: updatedActivity.status },
-          { label: "Notes", value: updatedActivity.notes || "None" }
-        ],
-        "warning"
-      );
+    // Send update email notification (only if staffEmail exists)
+    if (updatedActivity.staffEmail) {
+      try {
+        const emailHtml = getEmailTemplate(
+          "Activity Updated",
+          "An activity assigned to you has been updated. Please review the changes below:",
+          [
+            { label: "Activity Type", value: updatedActivity.activityType },
+            { label: "Location", value: updatedActivity.location },
+            { label: "Date", value: updatedActivity.scheduledDate },
+            { label: "Time", value: updatedActivity.scheduledTime },
+            { label: "Status", value: updatedActivity.status },
+            { label: "Notes", value: updatedActivity.notes || "None" }
+          ],
+          "warning"
+        );
 
-      await sendEmail(
-        updatedActivity.staffEmail,
-        "Water Maintenance Activity Updated",
-        `Updated: ${updatedActivity.activityType} at ${updatedActivity.location}`,
-        emailHtml
-      );
-    } catch (emailError) {
-      console.error("Failed to send update email:", emailError);
+        await sendEmail(
+          updatedActivity.staffEmail,
+          "Water Maintenance Activity Updated",
+          `Updated: ${updatedActivity.activityType} at ${updatedActivity.location}`,
+          emailHtml
+        );
+      } catch (emailError) {
+        console.error("Failed to send update email:", emailError);
+      }
     }
 
     res.status(200).json({
@@ -247,28 +263,30 @@ exports.deleteActivity = async (req, res) => {
       });
     }
 
-    // Send cancellation email notification
-    try {
-      const emailHtml = getEmailTemplate(
-        "Activity Cancelled",
-        "The following activity has been removed from the schedule:",
-        [
-          { label: "Activity Type", value: deletedActivity.activityType },
-          { label: "Location", value: deletedActivity.location },
-          { label: "Date", value: deletedActivity.scheduledDate },
-          { label: "Time", value: deletedActivity.scheduledTime }
-        ],
-        "danger"
-      );
+    // Send cancellation email notification (only if staffEmail exists)
+    if (deletedActivity.staffEmail) {
+      try {
+        const emailHtml = getEmailTemplate(
+          "Activity Cancelled",
+          "The following activity has been removed from the schedule:",
+          [
+            { label: "Activity Type", value: deletedActivity.activityType },
+            { label: "Location", value: deletedActivity.location },
+            { label: "Date", value: deletedActivity.scheduledDate },
+            { label: "Time", value: deletedActivity.scheduledTime }
+          ],
+          "danger"
+        );
 
-      await sendEmail(
-        deletedActivity.staffEmail,
-        "Water Maintenance Activity Cancelled",
-        `Cancelled: ${deletedActivity.activityType} at ${deletedActivity.location}`,
-        emailHtml
-      );
-    } catch (emailError) {
-      console.error("Failed to send deletion email:", emailError);
+        await sendEmail(
+          deletedActivity.staffEmail,
+          "Water Maintenance Activity Cancelled",
+          `Cancelled: ${deletedActivity.activityType} at ${deletedActivity.location}`,
+          emailHtml
+        );
+      } catch (emailError) {
+        console.error("Failed to send deletion email:", emailError);
+      }
     }
 
     res.status(200).json({
