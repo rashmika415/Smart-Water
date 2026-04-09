@@ -25,8 +25,18 @@ export async function apiFetch(path, { token, ...init } = {}) {
   if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
-  const payload = await parseJsonSafe(res);
+  let res;
+  let payload;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    payload = await parseJsonSafe(res);
+  } catch (error) {
+    throw new ApiError(
+      `Unable to connect to backend at ${API_BASE_URL}. Make sure backend is running.`,
+      0,
+      { cause: error?.message || "network_error" }
+    );
+  }
 
   if (!res.ok) {
     const message =
