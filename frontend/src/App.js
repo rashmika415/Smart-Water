@@ -4,6 +4,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { VirtualMeterPage } from "./pages/VirtualMeterPage";
+import { ContactPage } from "./pages/ContactPage";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminRoute } from "./components/admin/AdminRoute";
 import { UserLayout } from "./components/user/UserLayout";
@@ -34,6 +35,7 @@ function App() {
     <div className="App">
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/virtual-meter" element={<VirtualMeterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

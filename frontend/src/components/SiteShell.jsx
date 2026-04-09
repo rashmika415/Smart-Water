@@ -9,7 +9,7 @@ const navItems = [
   { to: "/virtual-meter", label: "Virtual Meter", route: true },
   { to: "/#conservation", label: "Conservation" },
   { to: "/#plans", label: "Saving Plans" },
-  { to: "/#contact", label: "Contact" },
+  { to: "/contact", label: "Contact Us", route: true },
 ];
 
 export function Navbar() {
