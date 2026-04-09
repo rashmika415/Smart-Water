@@ -8,8 +8,13 @@
     "test:unit:usage": "jest tests/unit --runInBand --testPathPatterns=\"usage|carbonService|usageHelpers\"",
     "test:integration": "jest tests/integration --runInBand",
     "test:integration:usage": "jest tests/integration/usage --runInBand",
+    "test:unit:my-utils": "jest tests/unit/utils/estimateUsage.test.js tests/unit/utils/weatherService.test.js --runInBand",
+    "test:unit:my-controllers": "jest tests/unit/controllers/userController.test.js tests/unit/controllers/householdController.test.js tests/unit/controllers/zoneController.test.js --runInBand",
+    "test:integration:my-modules": "jest tests/integration/user-management tests/integration/household-zone --runInBand",
     "test:performance:usage": "artillery run tests/performance/usage/usage-load.yml",
     "test:performance:usage:spike": "artillery run tests/performance/usage/usage-spike.yml",
+    "test:performance:my-module": "artillery run tests/performance/user-household-zone/user-household-zone-load.yml",
+    "test:performance:my-module:spike": "artillery run tests/performance/user-household-zone/user-household-zone-spike.yml",
     "start": "nodemon app.js"
   },
   "author": "",
@@ -27,7 +32,7 @@
     "artillery": "^2.0.30",
     "jest": "^30.3.0",
     "mongodb-memory-server": "^11.0.1",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^8.0.5",
     "nodemon": "^3.1.11",
     "supertest": "^7.2.2"
   },

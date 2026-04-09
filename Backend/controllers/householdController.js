@@ -67,7 +67,10 @@ exports.createHousehold = async (req, res) => {
     try {
       const user = await User.findById(userId); // get user's email
       if (user && user.email) {
-        await sendHouseholdEstimate(user.email, household); // send email
+        const mailResult = await sendHouseholdEstimate(user.email, household); // send email
+        if (!mailResult?.success) {
+          console.error("Household email send failed:", mailResult?.error || "Unknown email error");
+        }
       }
     } catch (emailErr) {
       console.error("Error sending household estimate email:", emailErr.message);

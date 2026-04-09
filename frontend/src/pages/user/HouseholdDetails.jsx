@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { householdsApi, zonesApi } from "../../lib/api";
+import { SRI_LANKA_COUNTRY, SRI_LANKA_PROVINCES, SRI_LANKA_TOWNS } from "../../lib/sriLankaLocations";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 
@@ -12,7 +13,14 @@ export function HouseholdDetails() {
   const [zones, setZones] = useState([]);
   const [error, setError] = useState("");
   const [zoneForm, setZoneForm] = useState({ zoneName: "", notes: "" });
-  const [editForm, setEditForm] = useState({ name: "", numberOfResidents: 1, propertyType: "house", city: "", state: "", country: "" });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    numberOfResidents: 1,
+    propertyType: "house",
+    city: "",
+    state: "",
+    country: SRI_LANKA_COUNTRY,
+  });
 
   const load = useCallback(async () => {
     setError("");
@@ -26,7 +34,7 @@ export function HouseholdDetails() {
         propertyType: h.propertyType || "house",
         city: h.location?.city || "",
         state: h.location?.state || "",
-        country: h.location?.country || "",
+        country: h.location?.country || SRI_LANKA_COUNTRY,
       });
     } catch (err) {
       setError(err?.message || "Failed to load household details");
@@ -44,7 +52,11 @@ export function HouseholdDetails() {
         name: editForm.name,
         numberOfResidents: Number(editForm.numberOfResidents),
         propertyType: editForm.propertyType,
-        location: { city: editForm.city, state: editForm.state || undefined, country: editForm.country || undefined },
+        location: {
+          city: editForm.city,
+          state: editForm.state || undefined,
+          country: SRI_LANKA_COUNTRY,
+        },
       });
       await load();
     } catch (err) {
@@ -115,9 +127,44 @@ export function HouseholdDetails() {
             <option value="house">house</option>
             <option value="apartment">apartment</option>
           </select>
-          <input className="h-11 rounded-xl border border-slate-200 px-4 text-sm" placeholder="City" value={editForm.city} onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))} required />
-          <input className="h-11 rounded-xl border border-slate-200 px-4 text-sm" placeholder="State" value={editForm.state} onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))} />
-          <input className="h-11 rounded-xl border border-slate-200 px-4 text-sm" placeholder="Country" value={editForm.country} onChange={(e) => setEditForm((f) => ({ ...f, country: e.target.value }))} />
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Province</label>
+            <select
+              className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
+              value={editForm.state}
+              onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
+              required
+            >
+              <option value="">Select province</option>
+              {SRI_LANKA_PROVINCES.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Town / City</label>
+            <input
+              list="lk-towns-edit"
+              className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
+              placeholder="Start typing to search..."
+              value={editForm.city}
+              onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+              required
+            />
+            <datalist id="lk-towns-edit">
+              {SRI_LANKA_TOWNS.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
+            <input
+              className="h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm"
+              value={SRI_LANKA_COUNTRY}
+              readOnly
+            />
+          </div>
           <div className="md:col-span-2"><Button type="submit">Save household updates</Button></div>
         </form>
       </Card>
