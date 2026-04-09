@@ -3,6 +3,7 @@
 const SavingPlan = require('../models/SavingPlanModel');
 const Household = require('../models/householdModel');
 const Usage = require('../models/UsageModel');
+const User = require('../models/userModel');
 const { generateSavingTips } = require('../utils/savingTips');
 const { calculateWaterSaving } = require('../utils/waterSavingCalculation');
 const { getWeatherForLocation } = require('../services/WaterSavingWeatherService');
@@ -10,14 +11,37 @@ const { getWeatherForLocation } = require('../services/WaterSavingWeatherService
 // GET all saving plans
 const getAllSavingPlans = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id;
-    const household = await Household.findOne({ userId });
+    const tokenRole = (req.user?.role || req.user?.user?.role || "").toString().trim().toLowerCase();
+    const userId =
+      req.user?.id ||
+      req.user?._id ||
+      req.user?.user?.id ||
+      req.user?.user?._id;
+    let role = tokenRole;
 
-    if (!household) {
-      return res.status(404).json({ message: "No household found for this user" });
+    // Fallback: resolve role from database if token payload role is missing/unexpected.
+    if (!role && userId) {
+      const currentUser = await User.findById(userId).select("role");
+      role = (currentUser?.role || "").toString().trim().toLowerCase();
     }
 
-    const savingPlans = await SavingPlan.find({ householdId: household._id }).populate('householdId');
+    const query = {};
+
+    if (role !== "admin") {
+      const ownerId = userId;
+      const household = await Household.findOne({ userId: ownerId });
+
+      if (!household) {
+        return res.status(404).json({ message: "No household found for this user" });
+      }
+
+      query.householdId = household._id;
+    }
+
+    const savingPlans = await SavingPlan.find(query).populate({
+      path: "householdId",
+      populate: { path: "userId", select: "name email" }
+    });
 
     if (!savingPlans || savingPlans.length === 0) {
       return res.status(200).json({
@@ -26,57 +50,73 @@ const getAllSavingPlans = async (req, res) => {
       });
     }
 
-  const enhancedSavingPlans = [];
+    const enhancedSavingPlans = [];
 
-  for (const plan of savingPlans) {
-    try {
-      const planObj = plan.toObject();
+    for (const plan of savingPlans) {
+      try {
+        const planObj = plan.toObject();
+        const populatedHousehold = plan.householdId || {};
 
-      // Water calculation
-      planObj.savingCalculation = calculateWaterSaving(
-        planObj.totalWaterUsagePerDay,
-        planObj.targetReductionPercentage
-      );
+        // Water calculation
+        planObj.savingCalculation = calculateWaterSaving(
+          planObj.totalWaterUsagePerDay,
+          planObj.targetReductionPercentage
+        );
 
-      // Add water saving tips
-      planObj.savingTips = generateSavingTips(planObj.priorityArea);
+        // Add water saving tips
+        planObj.savingTips = generateSavingTips(planObj.priorityArea);
 
-      // Ensure customGoalPercentage null for non-custom plans
-      if (planObj.planType !== "Custom") {
-        planObj.customGoalPercentage = null;
+        // Ensure customGoalPercentage null for non-custom plans
+        if (planObj.planType !== "Custom") {
+          planObj.customGoalPercentage = null;
+        }
+
+        // Preserve household and user metadata for admin display
+        planObj.householdId = populatedHousehold._id?.toString() || null;
+        planObj.householdName = populatedHousehold.name || null;
+        planObj.user = populatedHousehold.userId
+          ? {
+              id: populatedHousehold.userId._id?.toString(),
+              name: populatedHousehold.userId.name,
+              email: populatedHousehold.userId.email,
+            }
+          : null;
+
+        // Weather data
+        const city = populatedHousehold.location?.city || null;
+        planObj.weatherData = await getWeatherForLocation(city);
+
+        enhancedSavingPlans.push(planObj);
+      } catch (err) {
+        console.log(`Error processing plan ${plan._id}:`, err.message);
+        const planObj = plan.toObject();
+        const populatedHousehold = plan.householdId || {};
+        planObj.householdId = populatedHousehold._id?.toString() || null;
+        planObj.householdName = populatedHousehold.name || null;
+        planObj.user = populatedHousehold.userId
+          ? {
+              id: populatedHousehold.userId._id?.toString(),
+              name: populatedHousehold.userId.name,
+              email: populatedHousehold.userId.email,
+            }
+          : null;
+        planObj.weatherData = {
+          error: "Failed to fetch weather data",
+          gardenAdvice: "⚠ Weather service temporarily unavailable"
+        };
+        planObj.savingTips = generateSavingTips(planObj.priorityArea);
+        planObj.savingCalculation = calculateWaterSaving(
+          planObj.totalWaterUsagePerDay,
+          planObj.targetReductionPercentage
+        );
+        enhancedSavingPlans.push(planObj);
       }
-
-      // Household ID as string
-      const householdIdValue = plan.householdId?._id?.toString() || null;
-      planObj.householdId = householdIdValue;
-
-      // Weather data
-      const city = plan.householdId?.location?.city || null;
-      planObj.weatherData = await getWeatherForLocation(city);
-
-      enhancedSavingPlans.push(planObj);
-
-    } catch (err) {
-      console.log(`Error processing plan ${plan._id}:`, err.message);
-      const planObj = plan.toObject();
-      planObj.householdId = plan.householdId?._id?.toString() || null;
-      planObj.weatherData = {
-        error: "Failed to fetch weather data",
-        gardenAdvice: "⚠ Weather service temporarily unavailable"
-      };
-      planObj.savingTips = generateSavingTips(planObj.priorityArea);
-      planObj.savingCalculation = calculateWaterSaving(
-        planObj.totalWaterUsagePerDay,
-        planObj.targetReductionPercentage
-      );
-      enhancedSavingPlans.push(planObj);
     }
-  }
 
-  return res.status(200).json({
-    count: enhancedSavingPlans.length,
-    savingPlans: enhancedSavingPlans
-  });
+    return res.status(200).json({
+      count: enhancedSavingPlans.length,
+      savingPlans: enhancedSavingPlans
+    });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Error fetching saving plans" });

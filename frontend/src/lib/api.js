@@ -157,6 +157,11 @@ export const savingPlansApi = {
       method: "GET",
       token,
     }),
+  getAllAdmin: async (token) =>
+    apiFetch("/SavingPlan/admin", {
+      method: "GET",
+      token,
+    }),
   getCalculation: async (token) =>
     apiFetch("/SavingPlan/calculation", {
       method: "GET",

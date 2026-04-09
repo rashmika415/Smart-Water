@@ -3,6 +3,7 @@ const router = express.Router();
 
 // ✅ Import auth middleware
 const authMiddleware = require("../middleware/authMiddleware");
+const authorizeRoles = require("../middleware/roleMiddleware");
 
 // Import controller functions individually
 const {
@@ -20,6 +21,8 @@ const {
 router.post("/", authMiddleware, addSavingPlan); 
 // Get all saving plans for the logged-in user
 router.get("/", authMiddleware, getAllSavingPlans);
+// Admin-only route: get all saving plans across users
+router.get("/admin", authMiddleware, authorizeRoles("admin"), getAllSavingPlans);
 
 // Get water saving calculation for logged-in user
 router.get("/calculation", authMiddleware, getSavingCalculation);
