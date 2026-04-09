@@ -145,7 +145,7 @@ export function UserDashboard() {
             </Button>
           </Card>
         ))}
-      </section>
+      </div>
 
       {loading ? <p className="mt-6 text-sm text-slate-500">Loading latest household summary...</p> : null}
     </div>
