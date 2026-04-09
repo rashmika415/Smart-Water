@@ -13,6 +13,7 @@ import { ManageUsers } from "./pages/admin/ManageUsers";
 import { ManageHouseholds } from "./pages/admin/ManageHouseholds";
 import { AllHouseholdsWithZones } from "./pages/admin/AllHouseholdsWithZones";
 import { ManageActivities } from "./pages/admin/ManageActivities";
+import { SavingPlaneA } from "./pages/admin/SavingPlaneA";
 import { UserDashboard } from "./pages/user/UserDashboard";
 import { MyProfile } from "./pages/user/MyProfile";
 import { MyHouseholds } from "./pages/user/MyHouseholds";
@@ -81,6 +82,7 @@ function App() {
           <Route path="households" element={<ManageHouseholds />} />
           <Route path="households-zones" element={<AllHouseholdsWithZones />} />
           <Route path="activities" element={<ManageActivities />} />
+          <Route path="saving-plans" element={<SavingPlaneA />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
