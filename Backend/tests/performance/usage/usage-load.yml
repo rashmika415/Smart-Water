@@ -1,0 +1,37 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 30
+      arrivalRate: 2
+      name: warmup
+    - duration: 60
+      arrivalRate: 8
+      name: sustained_load
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: usage_read_and_analytics_flow
+    weight: 70
+    flow:
+      - get:
+          url: "/usage"
+      - get:
+          url: "/usage/carbon-stats"
+      - get:
+          url: "/usage/carbon-by-activity"
+      - get:
+          url: "/usage/carbon-trend?days=7"
+
+  - name: usage_create_flow
+    weight: 30
+    flow:
+      - post:
+          url: "/usage"
+          json:
+            activityType: "shower"
+            liters: 45
+            source: "manual"
+            notes: "performance run"

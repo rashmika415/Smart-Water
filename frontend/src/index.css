@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter,
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: radial-gradient(1200px 700px at 20% 10%, rgba(34, 211, 238, 0.22), transparent 60%),
+    radial-gradient(900px 500px at 90% 15%, rgba(59, 130, 246, 0.18), transparent 55%),
+    linear-gradient(180deg, #e9fbff 0%, #ffffff 55%, #ffffff 100%);
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+:root {
+  color-scheme: light;
+}
