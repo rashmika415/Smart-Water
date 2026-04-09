@@ -149,3 +149,25 @@ export const zonesApi = {
     }),
 };
 
+export const activitiesApi = {
+  list: async (token) => 
+    apiFetch("/api/activities", { method: "GET", token }),
+  getById: async (token, id) =>
+    apiFetch(`/api/activities/${id}`, { method: "GET", token }),
+  create: async (token, body) =>
+    apiFetch("/api/activities", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/api/activities/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/api/activities/${id}`, { method: "DELETE", token }),
+};
+
+

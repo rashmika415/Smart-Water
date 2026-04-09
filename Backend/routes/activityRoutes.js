@@ -1,20 +1,23 @@
 const express = require("express");
 const router = express.Router();
 const activityController = require("../controllers/activityController");
-
-// CREATE - Add a new activity
-router.post("/", activityController.createActivity);
+const verifyToken = require("../middleware/authMiddleware");
+const authorizeRoles = require("../middleware/roleMiddleware");
 
 // READ - Get all activities
-router.get("/", activityController.getActivities);
+router.get("/", verifyToken, activityController.getActivities);
 
 // READ - Get a single activity by ID
-router.get("/:id", activityController.getActivityById);
+router.get("/:id", verifyToken, activityController.getActivityById);
+
+// CREATE - Add a new activity
+router.post("/", verifyToken, authorizeRoles("admin"), activityController.createActivity);
 
 // UPDATE - Update an activity by ID
-router.put("/:id", activityController.updateActivity);
+router.put("/:id", verifyToken, authorizeRoles("admin"), activityController.updateActivity);
 
 // DELETE - Delete an activity by ID
-router.delete("/:id", activityController.deleteActivity);
+router.delete("/:id", verifyToken, authorizeRoles("admin"), activityController.deleteActivity);
 
 module.exports = router;
+

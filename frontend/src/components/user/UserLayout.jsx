@@ -2,7 +2,7 @@ import React from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../ui/Button";
-import { Droplet, Home, LayoutDashboard, User, Building2, Receipt, CloudSun, LogOut } from "lucide-react";
+import { Droplet, Home, LayoutDashboard, User, Building2, Receipt, CloudSun, LogOut, ClipboardList } from "lucide-react";
 import clsx from "clsx";
 
 const nav = [
@@ -11,7 +11,9 @@ const nav = [
   { to: "/user/households", label: "My Households", icon: Building2 },
   { to: "/user/estimated-bill", label: "Estimated Bill", icon: Receipt },
   { to: "/user/weather-insights", label: "Weather Insights", icon: CloudSun },
+  { to: "/user/activities", label: "Maintenance Updates", icon: ClipboardList },
 ];
+
 
 export function UserLayout() {
   const { user, logout } = useAuth();
