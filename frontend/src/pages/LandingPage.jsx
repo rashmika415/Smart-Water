@@ -206,7 +206,7 @@ export function LandingPage() {
               >
                 <img 
                   src="/3.jpg" 
-                  alt="SmartWater Hero Image"
+                  alt="SmartWater hero"
                   className="w-full h-auto object-cover"
                 />
               </motion.div>
