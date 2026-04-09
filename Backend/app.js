@@ -21,11 +21,17 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // CORS middleware
 app.use((req, res, next) => {
+  const configuredOrigins = (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   const allowedOrigins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    ...configuredOrigins,
   ];
   const origin = req.headers.origin;
   
