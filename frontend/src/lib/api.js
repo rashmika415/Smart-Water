@@ -56,5 +56,55 @@ export const usersApi = {
       method: "GET",
       token,
     }),
+  list: async (token) =>
+    apiFetch("/api/users/", {
+      method: "GET",
+      token,
+    }),
+  getById: async (token, id) =>
+    apiFetch(`/api/users/${id}`, {
+      method: "GET",
+      token,
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/api/users/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/api/users/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+};
+
+export const householdsApi = {
+  list: async (token, { page = 1, limit = 10, search = "" } = {}) => {
+    const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) q.set("search", search);
+    return apiFetch(`/api/households?${q.toString()}`, { method: "GET", token });
+  },
+  getById: async (token, id) =>
+    apiFetch(`/api/households/${id}`, {
+      method: "GET",
+      token,
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/api/households/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/api/households/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+  allWithZones: async (token) =>
+    apiFetch("/api/households/all-with-zones", {
+      method: "GET",
+      token,
+    }),
 };
 
