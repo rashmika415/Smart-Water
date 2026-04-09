@@ -149,3 +149,87 @@ export const zonesApi = {
     }),
 };
 
+export const usageApi = {
+  list: async (
+    token,
+    {
+      page = 1,
+      limit = 10,
+      activityType = "",
+      source = "",
+      startDate = "",
+      endDate = "",
+      sort = "-occurredAt",
+    } = {}
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      sort,
+    });
+
+    if (activityType) q.set("activityType", activityType);
+    if (source) q.set("source", source);
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+
+    return apiFetch(`/usage?${q.toString()}`, { method: "GET", token });
+  },
+  getById: async (token, id) =>
+    apiFetch(`/usage/${id}`, {
+      method: "GET",
+      token,
+    }),
+  create: async (token, body) =>
+    apiFetch("/usage", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/usage/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/usage/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+  carbonStats: async (token, { startDate = "", endDate = "" } = {}) => {
+    const q = new URLSearchParams();
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/carbon-stats${q.toString() ? `?${q.toString()}` : ""}`, {
+      method: "GET",
+      token,
+    });
+  },
+  carbonByActivity: async (token, { startDate = "", endDate = "" } = {}) => {
+    const q = new URLSearchParams();
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/carbon-by-activity${q.toString() ? `?${q.toString()}` : ""}`, {
+      method: "GET",
+      token,
+    });
+  },
+  carbonTrend: async (token, { days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    return apiFetch(`/usage/carbon-trend?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  carbonLeaderboard: async (token, { startDate = "", endDate = "", limit = 5 } = {}) => {
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/carbon-leaderboard?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+};
+
