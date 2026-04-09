@@ -56,6 +56,7 @@ export function UserDashboard() {
           { to: "/user/profile", title: "View Profile", body: "View and update account details." },
           { to: "/user/households", title: "My Households", body: "Manage your households and zones." },
           { to: "/user/estimated-bill", title: "Estimated Bill", body: "Understand billing calculations." },
+          { to: "/user/saving-plane", title: "Saving Plane", body: "Track and manage your saving plan." },
           { to: "/user/weather-insights", title: "Weather Insights", body: "See climate zone effects." },
         ].map((x) => (
           <Card key={x.to} className="p-6">

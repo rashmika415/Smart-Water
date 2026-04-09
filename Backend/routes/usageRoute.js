@@ -23,6 +23,9 @@ router.get("/carbon-leaderboard", verifyToken, usageController.getCarbonLeaderbo
 // Get daily carbon footprint trend
 router.get("/carbon-trend", verifyToken, usageController.getCarbonTrend);
 
+// Get daily water usage for the user's household
+router.get("/daily-water-usage", verifyToken, usageController.getDailyWaterUsage);
+
 // ========================================
 // Standard CRUD Operations
 // ========================================

@@ -135,6 +135,25 @@ export const householdsApi = {
     }),
 };
 
+export const savingPlansApi = {
+  create: async (token, body) =>
+    apiFetch("/SavingPlan", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  getAll: async (token) =>
+    apiFetch("/SavingPlan", {
+      method: "GET",
+      token,
+    }),
+  getCalculation: async (token) =>
+    apiFetch("/SavingPlan/calculation", {
+      method: "GET",
+      token,
+    }),
+};
+
 export const zonesApi = {
   update: async (token, zoneId, body) =>
     apiFetch(`/api/zones/${zoneId}`, {
@@ -224,6 +243,13 @@ export const usageApi = {
     if (startDate) q.set("startDate", startDate);
     if (endDate) q.set("endDate", endDate);
     return apiFetch(`/usage/carbon-stats${q.toString() ? `?${q.toString()}` : ""}`, {
+      method: "GET",
+      token,
+    });
+  },
+  dailyWaterUsage: async (token, { days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    return apiFetch(`/usage/daily-water-usage?${q.toString()}`, {
       method: "GET",
       token,
     });

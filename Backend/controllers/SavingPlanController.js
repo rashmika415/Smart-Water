@@ -2,23 +2,29 @@
 
 const SavingPlan = require('../models/SavingPlanModel');
 const Household = require('../models/householdModel');
+const Usage = require('../models/UsageModel');
 const { generateSavingTips } = require('../utils/savingTips');
 const { calculateWaterSaving } = require('../utils/waterSavingCalculation');
 const { getWeatherForLocation } = require('../services/WaterSavingWeatherService');
 
 // GET all saving plans
 const getAllSavingPlans = async (req, res) => {
-  let savingPlans;
   try {
-    savingPlans = await SavingPlan.find().populate('householdId');
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ message: "Error fetching saving plans" });
-  }
+    const userId = req.user?.id || req.user?._id;
+    const household = await Household.findOne({ userId });
 
-  if (!savingPlans || savingPlans.length === 0) {
-    return res.status(404).json({ message: "No saving plans found" });
-  }
+    if (!household) {
+      return res.status(404).json({ message: "No household found for this user" });
+    }
+
+    const savingPlans = await SavingPlan.find({ householdId: household._id }).populate('householdId');
+
+    if (!savingPlans || savingPlans.length === 0) {
+      return res.status(200).json({
+        count: 0,
+        savingPlans: [],
+      });
+    }
 
   const enhancedSavingPlans = [];
 
@@ -71,6 +77,10 @@ const getAllSavingPlans = async (req, res) => {
     count: enhancedSavingPlans.length,
     savingPlans: enhancedSavingPlans
   });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Error fetching saving plans" });
+  }
 };
 
 // ADD new saving plan
@@ -84,14 +94,13 @@ const addSavingPlan = async (req, res) => {
     const {
       planType,
       householdSize,
-      totalWaterUsagePerDay,
       priorityArea,
       customGoalPercentage,
       waterSource
     } = req.body;
 
     // Required fields
-    if (!planType || !householdSize || !totalWaterUsagePerDay || !priorityArea || !waterSource) {
+    if (!planType || !householdSize || !priorityArea || !waterSource) {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
@@ -108,9 +117,45 @@ const addSavingPlan = async (req, res) => {
       });
     }
 
-    if (isNaN(totalWaterUsagePerDay) || totalWaterUsagePerDay < 0) {
+    // Fetch daily water usage from usage data
+    const days = 30; // Last 30 days
+    const end = new Date();
+    const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+
+    const usageResult = await Usage.aggregate([
+      {
+        $match: {
+          householdId: household._id,
+          occurredAt: { $gte: start, $lte: end },
+          deletedAt: null,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalLiters: { $sum: "$liters" },
+          daysWithUsage: { $addToSet: { $dateToString: { format: "%Y-%m-%d", date: "$occurredAt" } } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalLiters: 1,
+          daysWithUsage: { $size: "$daysWithUsage" },
+        },
+      },
+    ]);
+
+    let totalWaterUsagePerDay = 0;
+    if (usageResult.length > 0) {
+      const totalLiters = usageResult[0].totalLiters || 0;
+      const daysWithUsage = usageResult[0].daysWithUsage || 0;
+      totalWaterUsagePerDay = daysWithUsage > 0 ? Math.round(totalLiters / daysWithUsage) : 0;
+    }
+
+    if (totalWaterUsagePerDay <= 0) {
       return res.status(400).json({
-        message: "Total water usage must be a positive number"
+        message: "Unable to calculate daily water usage. Please ensure you have usage records."
       });
     }
 
@@ -168,10 +213,20 @@ const addSavingPlan = async (req, res) => {
 
     await newSavingPlan.save();
 
+    const savedPlanObj = newSavingPlan.toObject();
+    savedPlanObj.savingCalculation = calculateWaterSaving(
+      totalWaterUsagePerDay,
+      targetReductionPercentage
+    );
+    savedPlanObj.savingTips = generateSavingTips(priorityArea);
+    savedPlanObj.customGoalPercentage = planType === "Custom" ? customGoalPercentage : null;
+    savedPlanObj.householdId = household._id.toString();
+    savedPlanObj.weatherData = await getWeatherForLocation(household.location?.city || null);
+
     return res.status(201).json({
       success: true,
       message: "Saving plan created successfully",
-      data: newSavingPlan
+      data: savedPlanObj
     });
 
   } catch (error) {

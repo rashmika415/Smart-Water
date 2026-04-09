@@ -20,6 +20,7 @@ import { MyHouseholds } from "./pages/user/MyHouseholds";
 import { HouseholdDetails } from "./pages/user/HouseholdDetails";
 import { EstimatedBill } from "./pages/user/EstimatedBill";
 import { WeatherInsights } from "./pages/user/WeatherInsights";
+import { SavingPlane } from "./pages/user/SavingPlane";
 import { UserActivities } from "./pages/user/UserActivities";
 
 import { UsageHistory } from "./pages/user/UsageHistory";
@@ -67,6 +68,7 @@ function App() {
           <Route path="households" element={<MyHouseholds />} />
           <Route path="households/:id" element={<HouseholdDetails />} />
           <Route path="estimated-bill" element={<EstimatedBill />} />
+          <Route path="saving-plane" element={<SavingPlane />} />
           <Route path="weather-insights" element={<WeatherInsights />} />
           <Route path="activities" element={<UserActivities />} />
         </Route>

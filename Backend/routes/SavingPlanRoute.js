@@ -18,8 +18,8 @@ const {
 
 // Create a new saving plan
 router.post("/", authMiddleware, addSavingPlan); 
-// Get all saving plans
-router.get("/", getAllSavingPlans);
+// Get all saving plans for the logged-in user
+router.get("/", authMiddleware, getAllSavingPlans);
 
 // Get water saving calculation for logged-in user
 router.get("/calculation", authMiddleware, getSavingCalculation);
