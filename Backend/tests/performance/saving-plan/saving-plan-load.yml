@@ -1,0 +1,48 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 30
+      arrivalRate: 2
+      name: warmup
+    - duration: 60
+      arrivalRate: 8
+      name: sustained_load
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: saving_plan_read_flow
+    weight: 60
+    flow:
+      - get:
+          url: "/saving-plan"
+      - get:
+          url: "/saving-plan/calculation"
+
+  - name: saving_plan_create_flow
+    weight: 20
+    flow:
+      - post:
+          url: "/saving-plan"
+          json:
+            planType: "Basic"
+            householdSize: 4
+            priorityArea: "Bathroom"
+            waterSource: "Municipal"
+      - put:
+          url: "/saving-plan/{{ planId }}"
+          json:
+            status: "Completed"
+
+  - name: saving_plan_update_flow
+    weight: 20
+    flow:
+      - get:
+          url: "/saving-plan"
+      - put:
+          url: "/saving-plan/{{ planId }}"
+          json:
+            priorityArea: "Kitchen"
+            status: "Active"

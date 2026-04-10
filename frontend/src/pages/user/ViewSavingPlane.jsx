@@ -23,6 +23,7 @@ export function ViewSavingPlane() {
   const [error, setError] = useState("");
   const [successPopup, setSuccessPopup] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -81,6 +82,28 @@ export function ViewSavingPlane() {
     }
   };
 
+  const currentStatus = latestPlan?.status || "Active";
+  const isActivePlan = currentStatus === "Active";
+
+  const handleMarkCompleted = async () => {
+    if (!token || !latestPlan?._id || completing || !isActivePlan) return;
+
+    setCompleting(true);
+    setError("");
+    try {
+      await savingPlansApi.update(token, latestPlan._id, { status: "Completed" });
+      setPlans((prev) =>
+        prev.map((p) => (p._id === latestPlan._id ? { ...p, status: "Completed" } : p))
+      );
+      setSuccessPopup("Saving plan marked as completed.");
+      window.setTimeout(() => setSuccessPopup(""), 2200);
+    } catch (err) {
+      setError(err?.message || "Unable to mark saving plan as completed.");
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {successPopup ? (
@@ -113,11 +136,16 @@ export function ViewSavingPlane() {
         <Card className="p-6 text-sm text-slate-600">No saving plan found. Create one first.</Card>
       ) : (
         <>
+          {currentStatus === "Inactive" ? (
+            <Card className="border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              Your plan is inactivated. Please contact admin or create a new saving plan.
+            </Card>
+          ) : null}
           <Card className="space-y-4 p-6">
             <h2 className="text-lg font-semibold text-slate-900">Saving Plan Details</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <div><span className="text-slate-500">Plan type:</span> <span className="font-medium text-slate-900">{latestPlan.planType}</span></div>
-              <div><span className="text-slate-500">Status:</span> <span className="font-medium text-slate-900">{latestPlan.status || "Active"}</span></div>
+              <div><span className="text-slate-500">Status:</span> <span className="font-medium text-slate-900">{currentStatus}</span></div>
               <div><span className="text-slate-500">Reduction goal:</span> <span className="font-medium text-slate-900">{latestPlan.targetReductionPercentage}%</span></div>
               <div><span className="text-slate-500">Priority:</span> <span className="font-medium text-slate-900">{latestPlan.priorityArea}</span></div>
               <div><span className="text-slate-500">Water source:</span> <span className="font-medium text-slate-900">{latestPlan.waterSource}</span></div>
@@ -130,6 +158,16 @@ export function ViewSavingPlane() {
               <Button type="button" variant="ghost" onClick={handleDelete} disabled={deleting}>
                 {deleting ? "Deleting..." : "Delete"}
               </Button>
+              {isActivePlan ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMarkCompleted}
+                  disabled={completing}
+                >
+                  {completing ? "Completing..." : "Mark as Completed"}
+                </Button>
+              ) : null}
             </div>
           </Card>
 

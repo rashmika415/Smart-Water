@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
 import clsx from "clsx";
-import { LayoutDashboard, Home, Users, Building2, Layers3, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Home, Users, Building2, Layers3, ClipboardList, Sparkles } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
 
 export const ADMIN_NAV = [
@@ -10,6 +10,7 @@ export const ADMIN_NAV = [
   { to: "/admin/households", label: "Manage Households", icon: Building2, end: false },
   { to: "/admin/households-zones", label: "Households & Zones", icon: Layers3, end: false },
   { to: "/admin/activities", label: "Manage Activities", icon: ClipboardList, end: false },
+  { to: "/admin/saving-plans", label: "Water Saving Plan", icon: Sparkles, end: false },
 ];
 
 

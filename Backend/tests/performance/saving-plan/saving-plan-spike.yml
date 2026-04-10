@@ -1,0 +1,35 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 10
+      arrivalRate: 1
+      name: baseline
+    - duration: 30
+      arrivalRate: 20
+      name: spike
+    - duration: 10
+      arrivalRate: 1
+      name: cooldown
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: saving_plan_spike_test
+    flow:
+      - get:
+          url: "/saving-plan"
+      - post:
+          url: "/saving-plan"
+          json:
+            planType: "Advanced"
+            householdSize: 3
+            priorityArea: "Kitchen"
+            waterSource: "Well"
+      - get:
+          url: "/saving-plan/calculation"
+      - put:
+          url: "/saving-plan/{{ planId }}"
+          json:
+            status: "Inactive"

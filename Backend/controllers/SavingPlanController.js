@@ -331,13 +331,19 @@ const updateSavingPlan = async (req, res) => {
     totalWaterUsagePerDay,
     priorityArea,
     customGoalPercentage,
-    waterSource
+    waterSource,
+    status
   } = req.body;
 
   const allowedPlanTypes = ["Basic", "Advanced", "Custom"];
+  const allowedStatuses = ["Active", "Inactive", "Completed"];
 
   if (planType && !allowedPlanTypes.includes(planType)) {
     return res.status(400).json({ message: "Invalid plan type" });
+  }
+
+  if (status && !allowedStatuses.includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
   }
 
   if (householdSize && (isNaN(householdSize) || householdSize < 1)) {
@@ -375,7 +381,8 @@ const updateSavingPlan = async (req, res) => {
         totalWaterUsagePerDay,
         priorityArea,
         customGoalPercentage,
-        waterSource
+        waterSource,
+        status
       },
       { new: true }
     );
