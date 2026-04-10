@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../ui/Button";
+import { BrandLogo } from "../BrandLogo";
 import { Bell, CheckCheck, LogOut, UserPlus } from "lucide-react";
 import { AdminSidebar, AdminMobileNav } from "../Sidebar";
 import { adminNotificationsApi, usersApi } from "../../lib/api";
@@ -124,15 +125,21 @@ export function AdminLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur">
             <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="min-w-0 lg:hidden">
-                <div className="text-sm font-extrabold text-slate-900">Admin</div>
-                <div className="truncate text-xs text-slate-500">{user?.email}</div>
-              </div>
-              <div className="hidden min-w-0 lg:block">
-                <div className="text-sm font-extrabold text-slate-900">
-                  Welcome, {user?.name || "Admin"}
+              <div className="flex min-w-0 items-center gap-3 lg:hidden">
+                <BrandLogo className="h-9 w-9 shrink-0" alt="" />
+                <div className="min-w-0">
+                  <div className="text-sm font-extrabold text-slate-900">Admin</div>
+                  <div className="truncate text-xs text-slate-500">{user?.email}</div>
                 </div>
-                <div className="truncate text-xs text-slate-500">{user?.email}</div>
+              </div>
+              <div className="hidden min-w-0 items-center gap-3 lg:flex">
+                <BrandLogo className="h-9 w-9 shrink-0" alt="" />
+                <div className="min-w-0">
+                  <div className="text-sm font-extrabold text-slate-900">
+                    Welcome, {user?.name || "Admin"}
+                  </div>
+                  <div className="truncate text-xs text-slate-500">{user?.email}</div>
+                </div>
               </div>
               <div className="relative flex items-center gap-2">
                 <button
