@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { savingPlansApi, usageApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
@@ -17,23 +17,11 @@ const planSummary = {
   Custom: "A flexible plan where you set your own reduction percentage.",
 };
 
-function calculateSavingPlan(totalWaterUsagePerDay, targetReductionPercentage) {
-  const usage = Number(totalWaterUsagePerDay);
-  const reduction = Number(targetReductionPercentage);
-  if (Number.isNaN(usage) || Number.isNaN(reduction)) return null;
-
-  const waterToSaveLiters = (usage * reduction) / 100;
-  const targetDailyUsage = usage - waterToSaveLiters;
-  return {
-    totalWaterUsagePerDay: usage,
-    targetReductionPercentage: reduction,
-    waterToSaveLiters,
-    targetDailyUsage,
-  };
-}
-
 export function SavingPlane() {
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const { planId } = useParams();
+  const isEditMode = Boolean(planId);
   const [planType, setPlanType] = useState("Basic");
   const [householdSize, setHouseholdSize] = useState(1);
   const [priorityArea, setPriorityArea] = useState("General");
@@ -47,21 +35,25 @@ export function SavingPlane() {
   const [plansLoading, setPlansLoading] = useState(false);
   const [plansError, setPlansError] = useState("");
   const [showTips, setShowTips] = useState(false);
-  const [serverCalculation, setServerCalculation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [initialPlanLoading, setInitialPlanLoading] = useState(false);
+
+  const extractPlans = (response) => {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.savingPlans)) return response.savingPlans;
+    if (Array.isArray(response?.data?.savingPlans)) return response.data.savingPlans;
+    if (Array.isArray(response?.data)) return response.data;
+    return [];
+  };
 
   const targetReductionPercentage = useMemo(() => {
     if (planType === "Basic") return 10;
     if (planType === "Advanced") return 20;
     return Number(customGoalPercentage) || 0;
   }, [planType, customGoalPercentage]);
-
-  const calculation = useMemo(() =>
-    calculateSavingPlan(dailyWaterUsage ?? 0, targetReductionPercentage),
-    [dailyWaterUsage, targetReductionPercentage]
-  );
 
   useEffect(() => {
     if (!token) return;
@@ -91,7 +83,7 @@ export function SavingPlane() {
       try {
         const response = await savingPlansApi.getAll(token);
         if (!cancelled) {
-          const plans = response.savingPlans || [];
+          const plans = extractPlans(response);
           setSavedPlans(plans);
           setSavedPlan(plans[0] || null);
         }
@@ -106,26 +98,45 @@ export function SavingPlane() {
       }
     };
 
-    const loadSavingCalculation = async () => {
-      try {
-        const response = await savingPlansApi.getCalculation(token);
-        if (!cancelled) {
-          setServerCalculation(response || null);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setServerCalculation(null);
-        }
-      }
-    };
-
     loadDailyWaterUsage();
     loadSavedPlans();
-    loadSavingCalculation();
     return () => {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !isEditMode || !planId) return;
+    let cancelled = false;
+
+    const loadPlanForEdit = async () => {
+      setInitialPlanLoading(true);
+      setError("");
+      try {
+        const response = await savingPlansApi.getById(token, planId);
+        const plan = response?.savingPlan || response?.data || response;
+        if (!cancelled && plan) {
+          setPlanType(plan.planType || "Basic");
+          setHouseholdSize(plan.householdSize || 1);
+          setPriorityArea(plan.priorityArea || "General");
+          setWaterSource(plan.waterSource || "Municipal");
+          setCustomGoalPercentage(plan.customGoalPercentage || 15);
+          setSavedPlan(plan);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || "Unable to load saving plan for update.");
+        }
+      } finally {
+        if (!cancelled) setInitialPlanLoading(false);
+      }
+    };
+
+    loadPlanForEdit();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, isEditMode, planId]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -163,14 +174,27 @@ export function SavingPlane() {
         customGoalPercentage: planType === "Custom" ? Number(customGoalPercentage) : undefined,
       };
 
-      const response = await savingPlansApi.create(token, payload);
+      const response = isEditMode
+        ? await savingPlansApi.update(token, planId, payload)
+        : await savingPlansApi.create(token, payload);
       const plan = response?.data ? response.data : response;
       setSavedPlan(plan);
-      setSavedPlans((prevPlans) => [plan, ...prevPlans]);
-      setServerCalculation(plan.savingCalculation || null);
-      setMessage("Saving plan generated successfully.");
+      setSavedPlans((prevPlans) => (isEditMode ? prevPlans : [plan, ...prevPlans]));
+      setMessage(isEditMode ? "Saving plan updated successfully." : "Saving plan generated successfully.");
+      setShowSuccessPopup(true);
+      if (isEditMode) {
+        window.setTimeout(() => {
+          setShowSuccessPopup(false);
+          navigate("/user/view-saving-plane", {
+            replace: true,
+            state: { successMessage: "Saving plan updated successfully." },
+          });
+        }, 1200);
+      } else {
+        window.setTimeout(() => setShowSuccessPopup(false), 2500);
+      }
     } catch (err) {
-      setError(err?.message || "Unable to create saving plan.");
+      setError(err?.message || (isEditMode ? "Unable to update saving plan." : "Unable to create saving plan."));
     } finally {
       setLoading(false);
     }
@@ -178,13 +202,20 @@ export function SavingPlane() {
 
   return (
     <div className="mx-auto max-w-6xl">
+      {showSuccessPopup ? (
+        <div className="fixed right-4 top-4 z-50 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg">
+          {isEditMode ? "Saving plan updated successfully." : "Saving plan added successfully."}
+        </div>
+      ) : null}
       <div className="mb-8">
         <div className="flex items-center gap-3 text-brand-600">
           <Sparkles className="h-6 w-6" />
           <h1 className="text-2xl font-black tracking-tight text-slate-900">Saving Plane</h1>
         </div>
         <p className="mt-2 text-sm text-slate-600">
-          Choose a plan type, generate your saving plan, and review the expected water reduction.
+          {isEditMode
+            ? "Update your saving plan details and save your changes."
+            : "Choose a plan type, generate your saving plan, and review the expected water reduction."}
         </p>
       </div>
 
@@ -198,6 +229,9 @@ export function SavingPlane() {
           ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {initialPlanLoading ? (
+              <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">Loading plan details...</div>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2 text-sm font-semibold text-slate-700">
                 Plan type
@@ -280,39 +314,11 @@ export function SavingPlane() {
                   <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">Reduction</span>
                   <div className="mt-1 text-lg font-semibold text-slate-900">{targetReductionPercentage}%</div>
                 </div>
-                <div>
-                  <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">Expected savings</span>
-                  <div className="mt-1 text-lg font-semibold text-slate-900">{(serverCalculation?.waterToSaveLiters ?? calculation?.waterToSaveLiters)?.toFixed(0) || 0} L/day</div>
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                <div className="font-semibold text-slate-900">Water saving calculation</div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Average use</div>
-                    <div className="mt-1 text-sm text-slate-900">{(serverCalculation?.totalWaterUsagePerDay ?? calculation?.totalWaterUsagePerDay) || 0} L/day</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Target use</div>
-                    <div className="mt-1 text-sm text-slate-900">{(serverCalculation?.targetDailyUsage ?? calculation?.targetDailyUsage) || 0} L/day</div>
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Saved water</div>
-                    <div className="mt-1 text-sm text-slate-900">{(serverCalculation?.waterToSaveLiters ?? calculation?.waterToSaveLiters) || 0} L/day</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Reduction goal</div>
-                    <div className="mt-1 text-sm text-slate-900">{serverCalculation?.targetReductionPercentage ?? targetReductionPercentage}%</div>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Generating plan..." : "Generate saving plan"}
+            <Button type="submit" size="lg" className="w-full" disabled={loading || initialPlanLoading}>
+              {loading ? (isEditMode ? "Updating plan..." : "Generating plan...") : (isEditMode ? "Update saving plan" : "Generate saving plan")}
             </Button>
           </form>
         </Card>
@@ -331,6 +337,9 @@ export function SavingPlane() {
           </div>
 
           <div className="flex flex-wrap gap-3 pt-2">
+            <Button as={Link} to="/user/view-saving-plane" variant="outline" size="sm" className="gap-2">
+              View Saving Plan
+            </Button>
             <Button as={Link} to="/user/usage" variant="outline" size="sm" className="gap-2">
               View usage history
             </Button>

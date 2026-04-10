@@ -22,6 +22,7 @@ import { HouseholdDetails } from "./pages/user/HouseholdDetails";
 import { EstimatedBill } from "./pages/user/EstimatedBill";
 import { WeatherInsights } from "./pages/user/WeatherInsights";
 import { SavingPlane } from "./pages/user/SavingPlane";
+import { ViewSavingPlane } from "./pages/user/ViewSavingPlane";
 import { UserActivities } from "./pages/user/UserActivities";
 
 import { UsageHistory } from "./pages/user/UsageHistory";
@@ -68,6 +69,8 @@ function App() {
           <Route path="households/:id" element={<HouseholdDetails />} />
           <Route path="estimated-bill" element={<EstimatedBill />} />
           <Route path="saving-plane" element={<SavingPlane />} />
+          <Route path="saving-plane/update/:planId" element={<SavingPlane />} />
+          <Route path="view-saving-plane" element={<ViewSavingPlane />} />
           <Route path="weather-insights" element={<WeatherInsights />} />
           <Route path="activities" element={<UserActivities />} />
         </Route>

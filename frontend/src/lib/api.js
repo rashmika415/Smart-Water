@@ -157,9 +157,20 @@ export const savingPlansApi = {
       method: "GET",
       token,
     }),
-  getAllAdmin: async (token) =>
-    apiFetch("/SavingPlan/admin", {
+  getById: async (token, id) =>
+    apiFetch(`/SavingPlan/${id}`, {
       method: "GET",
+      token,
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/SavingPlan/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/SavingPlan/${id}`, {
+      method: "DELETE",
       token,
     }),
   getCalculation: async (token) =>
