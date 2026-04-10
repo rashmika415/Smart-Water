@@ -1,7 +1,8 @@
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
 import clsx from "clsx";
-import { Droplet, LayoutDashboard, Home, Users, Building2, Layers3, ClipboardList, Sparkles } from "lucide-react";
+import { LayoutDashboard, Home, Users, Building2, Layers3, ClipboardList } from "lucide-react";
+import { BrandLogo } from "./BrandLogo";
 
 export const ADMIN_NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -9,7 +10,6 @@ export const ADMIN_NAV = [
   { to: "/admin/households", label: "Manage Households", icon: Building2, end: false },
   { to: "/admin/households-zones", label: "Households & Zones", icon: Layers3, end: false },
   { to: "/admin/activities", label: "Manage Activities", icon: ClipboardList, end: false },
-  { to: "/admin/saving-plans", label: "Saving Plans", icon: Sparkles, end: false },
 ];
 
 
@@ -18,9 +18,7 @@ export function AdminSidebar() {
     <aside className="hidden w-64 shrink-0 border-r border-slate-200/80 bg-white/90 backdrop-blur lg:block">
       <div className="flex h-full flex-col px-4 py-6">
         <Link to="/admin" className="flex items-center gap-2 px-2">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-            <Droplet className="h-5 w-5" />
-          </span>
+          <BrandLogo className="h-10 w-10 shrink-0" alt="" />
           <div>
             <div className="text-sm font-extrabold text-slate-900">SmartWater</div>
             <div className="text-[11px] font-semibold text-brand-700">Admin</div>

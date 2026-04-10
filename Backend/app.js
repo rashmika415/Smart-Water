@@ -10,6 +10,7 @@ const savingPlanRoutes = require("./routes/SavingPlanRoute");
 const usageRoutes = require("./routes/usageRoute");
 const householdRoutes = require("./routes/householdRoutes");
 const zoneRoutes = require("./routes/zoneRoutes");
+const adminNotificationRoutes = require("./routes/adminNotificationRoutes");
 
 
 const PORT = process.env.PORT || 5000;
@@ -61,6 +62,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/households", householdRoutes);
 app.use("/api/zones", zoneRoutes);
 app.use("/api/activities", activityRoutes);
+app.use("/api/admin-notifications", adminNotificationRoutes);
 
 // Root route
 app.get("/", (req, res) => {

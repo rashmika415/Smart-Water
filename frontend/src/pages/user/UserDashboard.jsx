@@ -1,17 +1,72 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Activity,
+  ArrowRight,
+  Droplets,
+  Gauge,
+  Receipt,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
-import { householdsApi } from "../../lib/api";
-import { StatCard } from "../../components/StatCard";
+import { householdsApi, usageApi } from "../../lib/api";
+import { BrandLogo } from "../../components/BrandLogo";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Building2, Receipt, Droplets, Gauge, ArrowRight, Sparkles, TrendingUp, CloudSun } from "lucide-react";
+import { StatCard } from "../../components/StatCard";
+
+function formatDateKey(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDateLabel(dateKey) {
+  if (!dateKey) return "";
+  const date = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateKey;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function safeNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function TrendBars({ points }) {
+  const max = Math.max(...points.map((p) => safeNumber(p.totalLiters || p.value || 0)), 1);
+  const items = points.map((p) => ({
+    label: p.label,
+    value: safeNumber(p.totalLiters || p.value || 0),
+  }));
+
+  return (
+    <div className="grid grid-cols-7 items-end gap-3">
+      {items.map((item) => (
+        <div key={item.label} className="text-center">
+          <div className="mx-auto flex h-44 w-full max-w-[44px] items-end rounded-[20px] bg-slate-100 p-1.5">
+            <div
+              className="w-full rounded-[14px] bg-gradient-to-t from-sky-500 via-cyan-400 to-emerald-300"
+              style={{ height: `${Math.max((item.value / max) * 100, 10)}%` }}
+            />
+          </div>
+          <div className="mt-3 text-xs font-semibold text-slate-500">{item.label}</div>
+          <div className="text-[11px] text-slate-400">{item.value.toLocaleString()}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function UserDashboard() {
   const { token, user } = useAuth();
   const [households, setHouseholds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [trendLoading, setTrendLoading] = useState(true);
+  const [trendError, setTrendError] = useState("");
+  const [trend, setTrend] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +85,40 @@ export function UserDashboard() {
     };
   }, [token]);
 
+  const loadTrend = useCallback(async () => {
+    if (!token) return;
+    setTrendLoading(true);
+    setTrendError("");
+    try {
+      const res = await usageApi.dailyWaterUsage(token, { days: 7 });
+      const raw = res?.data?.trend;
+      if (!Array.isArray(raw)) {
+        // Some backends only return averageDailyUsage; we fall back to empty.
+        setTrend([]);
+        setTrendLoading(false);
+        return;
+      }
+      const normalized = raw
+        .map((item) => ({
+          date: String(item?.date || item?._id || ""),
+          totalLiters: safeNumber(item?.totalLiters || item?.liters || item?.value || 0),
+        }))
+        .filter((item) => item.date)
+        .slice(-7);
+
+      setTrend(normalized);
+    } catch (err) {
+      setTrendError(err?.message || "Failed to load usage trend.");
+      setTrend([]);
+    } finally {
+      setTrendLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadTrend();
+  }, [loadTrend]);
+
   const summary = useMemo(() => {
     const totalHouseholds = households.length;
     const liters = households.reduce((a, h) => a + Number(h.estimatedMonthlyLiters || 0), 0);
@@ -38,96 +127,173 @@ export function UserDashboard() {
     return { totalHouseholds, liters, units, bill };
   }, [households]);
 
-  const cards = [
-    { to: "/user/profile", title: "My Profile", body: "Update your account details and password." },
-    { to: "/user/households", title: "My Households", body: "Create, edit and manage all your households." },
-    { to: "/user/estimated-bill", title: "Estimated Bill", body: "Check detailed monthly billing estimation." },
-    { to: "/user/weather-insights", title: "Weather Insights", body: "See climate impact for your locations." },
-  ];
+  const recentTrendPoints = useMemo(() => {
+    // Prefer backend trend if available; otherwise build a 7-day window of zeros.
+    const now = new Date();
+    const byDate = new Map(trend.map((item) => [item.date, item]));
+    const out = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const key = formatDateKey(d);
+      const found = byDate.get(key);
+      out.push({
+        label: formatDateLabel(key),
+        totalLiters: safeNumber(found?.totalLiters || 0),
+      });
+    }
+    return out;
+  }, [trend]);
+
+  const weeklyTotalLiters = useMemo(
+    () => recentTrendPoints.reduce((sum, item) => sum + safeNumber(item.totalLiters || 0), 0),
+    [recentTrendPoints]
+  );
+
+  const avgDailyLiters = weeklyTotalLiters ? weeklyTotalLiters / 7 : 0;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-brand-200/40 bg-gradient-to-br from-brand-600 via-cyan-600 to-sky-600 p-7 text-white shadow-xl">
-        <div className="absolute -right-16 -top-12 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-        <div className="absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-cyan-200/20 blur-3xl" />
-        <div className="relative grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-blue-800 via-blue-900 to-slate-900 p-6 text-white shadow-[0_30px_90px_-40px_rgba(2,132,199,0.65)] sm:p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.28),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.20),transparent_24%)]" />
+        <div className="relative grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Premium User Dashboard</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight">
-              Welcome{user?.name ? `, ${user.name}` : ""}!
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-2 backdrop-blur">
+              <BrandLogo className="h-8 w-8" alt="" />
+              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">
+                Smart Water Premium Dashboard
+              </span>
+            </div>
+
+            <h1 className="mt-6 max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl xl:text-[42px]">
+              Welcome{user?.name ? `, ${user.name}` : ""}. Your usage insights just got upgraded.
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-cyan-50/95">
-              Track your household usage, monitor climate-based estimates, and optimize your monthly water bill with smarter insights.
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-white sm:text-base">
+              See weekly usage signals, keep an eye on billing estimates, and jump into analytics and
+              maintenance updates from one modern home screen.
             </p>
-            <div className="mt-5 flex flex-wrap gap-3 text-xs">
-              <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">Real-time summaries</span>
-              <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">Climate-aware estimates</span>
-              <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">Household-level tracking</span>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Households
+                </div>
+                <div className="mt-2 text-2xl font-black tracking-tight text-white">
+                  {loading ? "-" : summary.totalHouseholds.toLocaleString()}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Weekly total (L)
+                </div>
+                <div className="mt-2 text-2xl font-black tracking-tight text-white">
+                  {trendLoading ? "-" : weeklyTotalLiters.toLocaleString()}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Avg/day (L)
+                </div>
+                <div className="mt-2 text-2xl font-black tracking-tight text-white">
+                  {trendLoading ? "-" : Math.round(avgDailyLiters).toLocaleString()}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="rounded-2xl bg-white/10 p-5 backdrop-blur">
+
+          <Card className="border border-white/10 bg-white/10 p-5 text-white ring-0 backdrop-blur">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Savings Progress</span>
-              <Sparkles className="h-5 w-5" />
+              <div className="text-sm font-semibold text-white">Efficiency score</div>
+              <Sparkles className="h-5 w-5 text-emerald-300" />
             </div>
-            <div className="mt-4 text-4xl font-black">
+            <div className="mt-4 text-5xl font-black tracking-tight text-white">
               {summary.totalHouseholds > 0 ? "72%" : "0%"}
             </div>
-            <div className="mt-1 text-sm text-cyan-100">Average efficiency score from your households.</div>
-            <div className="mt-4 h-2 rounded-full bg-white/20">
-              <div className="h-full w-[72%] rounded-full bg-white" />
+            <p className="mt-2 text-sm text-white">
+              A simple placeholder score based on connected households. (We can replace this with a
+              real backend score later.)
+            </p>
+            <div className="mt-4 h-2 rounded-full bg-white/10">
+              <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-emerald-300 via-cyan-300 to-sky-300" />
             </div>
-          </div>
+          </Card>
         </div>
       </section>
 
       {error ? (
-        <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-100">
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total households" value={summary.totalHouseholds} subtitle="Registered by you" icon={Building2} />
+        <StatCard title="Total households" value={summary.totalHouseholds} subtitle="Registered by you" icon={Activity} />
         <StatCard title="Estimated liters" value={summary.liters.toLocaleString()} subtitle="Monthly total" icon={Droplets} />
         <StatCard title="Estimated units" value={summary.units.toFixed(2)} subtitle="m^3 monthly total" icon={Gauge} />
         <StatCard title="Predicted bill" value={summary.bill.toFixed(2)} subtitle="Monthly estimate" icon={Receipt} />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+        <Card className="border border-slate-200/80 bg-white p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Weekly usage
+              </div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                Water usage trend (last 7 days)
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Powered by your usage records ({trendLoading ? "loading..." : "live"}).
+              </p>
+            </div>
+            <div className="rounded-2xl bg-slate-100 p-3">
+              <TrendingUp className="h-5 w-5 text-sky-700" />
+            </div>
+          </div>
+
+          {trendError ? (
+            <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {trendError}
+            </div>
+          ) : null}
+
+          <div className="mt-8">
+            <TrendBars points={recentTrendPoints} />
+          </div>
+        </Card>
+
+        <Card className="border border-slate-200/80 bg-white p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-extrabold text-slate-900">Monthly Trend Snapshot</h2>
-              <p className="text-sm text-slate-500">Usage intensity from your current household set</p>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Quick actions
+              </div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                Jump back in
+              </h2>
             </div>
-            <TrendingUp className="h-5 w-5 text-brand-600" />
+            <div className="rounded-2xl bg-slate-100 p-3">
+              <Activity className="h-5 w-5 text-slate-700" />
+            </div>
           </div>
-          <div className="mt-6 grid grid-cols-6 items-end gap-3">
-            {[42, 55, 68, 61, 73, 64].map((v, i) => (
-              <div key={i} className="text-center">
-                <div className="mx-auto flex h-36 w-full max-w-[38px] items-end rounded-lg bg-slate-100 p-1">
-                  <div className="w-full rounded-md bg-gradient-to-t from-brand-600 to-sky-400" style={{ height: `${v}%` }} />
-                </div>
-                <p className="mt-2 text-[11px] font-semibold text-slate-500">{["Jan", "Feb", "Mar", "Apr", "May", "Jun"][i]}</p>
+          <div className="mt-6 grid gap-3">
+            {[
+              { to: "/user/usage", title: "Usage history", body: "Review, filter, and manage your water logs." },
+              { to: "/user/carbon-analytics", title: "Carbon analytics", body: "See trends and drill down by activity." },
+              { to: "/user/estimated-bill", title: "Estimated bill", body: "Check monthly billing estimation details." },
+              { to: "/user/activities", title: "Maintenance updates", body: "View scheduled and completed maintenance." },
+            ].map((item) => (
+              <div key={item.to} className="rounded-2xl bg-slate-50 px-4 py-4 ring-1 ring-slate-100">
+                <div className="text-sm font-bold text-slate-900">{item.title}</div>
+                <div className="mt-1 text-sm text-slate-500">{item.body}</div>
+                <Button as={Link} to={item.to} size="sm" className="mt-3 w-full">
+                  Open <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-extrabold text-slate-900">Climate Alert</h2>
-            <CloudSun className="h-5 w-5 text-brand-600" />
-          </div>
-          <p className="mt-4 text-sm text-slate-600">
-            Dry zones can increase estimated bills, while wet zones may lower consumption impact.
-          </p>
-          <div className="mt-4 space-y-2 text-sm">
-            <div className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800 ring-1 ring-amber-100">Dry: higher demand risk</div>
-            <div className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 ring-1 ring-emerald-100">Wet: favorable estimate adjustment</div>
-            <div className="rounded-lg bg-sky-50 px-3 py-2 text-sky-800 ring-1 ring-sky-100">Intermediate: balanced usage factor</div>
-          </div>
-        </div>
+        </Card>
       </section>
 
       <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
