@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { householdsApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
-import { CloudSun, CloudRain, Sun, ThermometerSun, MapPin, Wind, Droplets, Sparkles } from "lucide-react";
+import { BrandLogo } from "../../components/BrandLogo";
+import { CloudSun, CloudRain, Sun, ThermometerSun, MapPin, Wind, Sparkles } from "lucide-react";
 
 function zoneMessage(zone) {
   const z = String(zone || "").toLowerCase();
@@ -42,7 +43,7 @@ export function WeatherInsights() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-sky-200/40 bg-gradient-to-br from-sky-600 via-cyan-600 to-blue-700 p-7 text-white shadow-xl">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200/40 bg-gradient-to-br from-blue-800 via-blue-900 to-slate-900 p-7 text-white shadow-xl">
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         <div className="relative grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           <div>
@@ -115,7 +116,7 @@ export function WeatherInsights() {
         </Card>
         <Card className="border border-sky-100 bg-gradient-to-r from-sky-50/80 to-cyan-50/80 p-5">
           <div className="flex items-center gap-2 text-slate-900">
-            <Droplets className="h-5 w-5 text-cyan-700" />
+            <BrandLogo className="h-5 w-5" alt="" />
             <p className="text-sm font-extrabold">Recommendation</p>
           </div>
           <p className="mt-2 text-sm text-slate-700">

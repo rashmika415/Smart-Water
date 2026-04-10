@@ -2,6 +2,7 @@ import React from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Droplet, Mail, Phone, MapPin } from "lucide-react";
 import { Button } from "./ui/Button";
+import { BrandLogo } from "./BrandLogo";
 import { useAuth } from "../auth/AuthContext";
 
 const navItems = [
@@ -20,9 +21,7 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-6 sm:py-8">
             <Link to="/" className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-                <Droplet className="h-5 w-5" />
-              </span>
+              <BrandLogo className="h-9 w-9" alt="" />
               <div className="leading-tight">
                 <div className="text-sm font-extrabold tracking-tight text-slate-900">
                   SmartWater
@@ -110,9 +109,7 @@ export function Footer() {
         <div className="mt-12 grid gap-10 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-                <Droplet className="h-5 w-5" />
-              </span>
+              <BrandLogo className="h-11 w-11" alt="" />
               <div>
                 <div className="text-base font-extrabold tracking-tight text-slate-900">SmartWater</div>
                 <div className="text-xs text-slate-500">Track. Conserve. Save.</div>

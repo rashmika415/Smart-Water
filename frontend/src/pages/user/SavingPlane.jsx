@@ -336,6 +336,20 @@ export function SavingPlane() {
             </div>
           </div>
 
+          {plansLoading ? (
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-100">
+              Loading saved plans...
+            </div>
+          ) : plansError ? (
+            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-100">
+              {plansError}
+            </div>
+          ) : savedPlans.length ? (
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-100">
+              Saved plans available: <span className="font-semibold text-slate-900">{savedPlans.length}</span>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-3 pt-2">
             <Button as={Link} to="/user/view-saving-plane" variant="outline" size="sm" className="gap-2">
               View Saving Plan

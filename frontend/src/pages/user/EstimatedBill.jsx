@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { householdsApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
+import { BrandLogo } from "../../components/BrandLogo";
 import { Button } from "../../components/ui/Button";
 import { jsPDF } from "jspdf";
-import { Receipt, Droplets, Gauge, CloudSun, Sparkles, TrendingUp, Wallet, Download } from "lucide-react";
+import { Receipt, Gauge, CloudSun, Sparkles, TrendingUp, Wallet, Download } from "lucide-react";
 
 export function EstimatedBill() {
   const { token } = useAuth();
@@ -191,7 +192,7 @@ export function EstimatedBill() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Estimated Liters</p>
               <p className="mt-1 text-2xl font-black text-slate-900">{totalLiters.toLocaleString()}</p>
             </div>
-            <Droplets className="h-6 w-6 text-cyan-600" />
+            <BrandLogo className="h-6 w-6" alt="" />
           </div>
         </Card>
         <Card className="p-5">
