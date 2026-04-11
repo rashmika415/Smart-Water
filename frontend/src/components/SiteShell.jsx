@@ -1,7 +1,8 @@
 import React from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Droplet, Mail, Phone, MapPin } from "lucide-react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Droplet, Mail, Phone, MapPin, Menu, X } from "lucide-react";
 import { Button } from "./ui/Button";
+import { BrandLogo } from "./BrandLogo";
 import { useAuth } from "../auth/AuthContext";
 
 const navItems = [
@@ -9,22 +10,36 @@ const navItems = [
   { to: "/virtual-meter", label: "Virtual Meter", route: true },
   { to: "/#conservation", label: "Conservation" },
   { to: "/#plans", label: "Saving Plans" },
-  { to: "/#contact", label: "Contact" },
+  { to: "/contact", label: "Contact Us", route: true },
 ];
 
 export function Navbar() {
-  const { token, logout, user } = useAuth();
+  const { token, logout } = useAuth();
+  const location = useLocation();
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
+
+  const baseNavClass = "rounded-full px-3 py-1.5 text-[15px] font-semibold transition";
+  const activeNavClass = "bg-sky-100 text-sky-800 ring-1 ring-sky-200";
+  const idleNavClass = "text-slate-600 hover:bg-slate-100 hover:text-slate-900";
+
+  const isHashItemActive = (to) => {
+    if (!to.startsWith("/#")) return false;
+    const hash = to.slice(1);
+    return location.pathname === "/" && location.hash === hash;
+  };
 
   return (
-    <div className="sticky top-0 z-40">
+    <div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-6 sm:py-8">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-                <Droplet className="h-5 w-5" />
-              </span>
+        <div className="flex items-center justify-between py-4 sm:py-5">
+            <Link to="/" className="flex items-center gap-2.5">
+              <BrandLogo className="h-9 w-9" alt="" />
               <div className="leading-tight">
-                <div className="text-sm font-extrabold tracking-tight text-slate-900">
+                <div className="text-[15px] font-extrabold tracking-tight text-slate-900">
                   SmartWater
                 </div>
                 <div className="text-[11px] text-slate-500">Track. Conserve. Save.</div>
@@ -34,18 +49,18 @@ export function Navbar() {
             <div className="hidden items-center gap-6 lg:flex">
               {navItems.map((item) => (
                 item.route ? (
-                  <Link
+                  <NavLink
                     key={item.to}
                     to={item.to}
-                    className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
+                    className={({ isActive }) => `${baseNavClass} ${isActive ? activeNavClass : idleNavClass}`}
                   >
                     {item.label}
-                  </Link>
+                  </NavLink>
                 ) : (
                   <a
                     key={item.to}
                     href={item.to}
-                    className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
+                    className={`${baseNavClass} ${isHashItemActive(item.to) ? activeNavClass : idleNavClass}`}
                   >
                     {item.label}
                   </a>
@@ -53,17 +68,12 @@ export function Navbar() {
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-3 md:flex">
               {token ? (
                 <>
                   <Button as={Link} to="/dashboard" variant="ghost" size="sm">
                     Dashboard
                   </Button>
-                  {user?.role === 'admin' && (
-                    <Button as={Link} to="/admin" variant="ghost" size="sm">
-                      Admin
-                    </Button>
-                  )}
                   <Button onClick={logout} variant="dark" size="sm">
                     Logout
                   </Button>
@@ -79,8 +89,72 @@ export function Navbar() {
                 </>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsOpen((open) => !open)}
+              className="grid h-10 w-10 place-items-center rounded-full text-slate-700 ring-1 ring-slate-200/90 transition hover:bg-slate-50 md:hidden"
+              aria-expanded={isOpen}
+              aria-label="Toggle navigation menu"
+            >
+              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
-        </div>
+
+          {isOpen ? (
+            <div className="pb-4 md:hidden">
+              <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
+                {navItems.map((item) => (
+                  item.route ? (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        `block rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                          isActive ? "bg-sky-50 text-sky-800 ring-1 ring-sky-200" : "text-slate-700 hover:bg-slate-50"
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ) : (
+                    <a
+                      key={item.to}
+                      href={item.to}
+                      className={`block rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                        isHashItemActive(item.to) ? "bg-sky-50 text-sky-800 ring-1 ring-sky-200" : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {item.label}
+                    </a>
+                  )
+                ))}
+
+                <div className="border-t border-slate-200/80 pt-3">
+                  {token ? (
+                    <div className="flex flex-col gap-2">
+                      <Button as={Link} to="/dashboard" variant="ghost" size="sm" className="w-full">
+                        Dashboard
+                      </Button>
+                      <Button onClick={logout} variant="dark" size="sm" className="w-full">
+                        Logout
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Button as={NavLink} to="/login" variant="ghost" size="sm" className="w-full">
+                        Login
+                      </Button>
+                      <Button as={NavLink} to="/register" size="sm" className="w-full">
+                        Register
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          </div>
     </div>
   );
 }
@@ -89,13 +163,13 @@ export function Footer() {
   const { token } = useAuth();
 
   return (
-    <footer id="contact" className="relative mt-24 overflow-hidden border-t border-slate-200/80 bg-gradient-to-b from-white via-slate-50 to-sky-50">
+    <footer id="contact" className="relative mt-20 overflow-hidden border-t border-slate-200/80 bg-gradient-to-b from-white to-slate-50">
       <div className="pointer-events-none absolute left-0 top-0 h-60 w-60 rounded-full bg-sky-200/30 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
 
       <div className="relative mx-auto w-full max-w-[108rem] px-4 py-14 sm:px-6 lg:px-10">
         {!token ? (
-          <div className="grid gap-4 rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
+          <div className="grid gap-4 rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
             <div>
               <div className="text-lg font-black tracking-tight text-slate-900">Start reducing your water bill today</div>
               <div className="mt-1 text-sm text-slate-600">Create a free account and get your first usage insights in minutes.</div>
@@ -107,12 +181,10 @@ export function Footer() {
           </div>
         ) : null}
 
-        <div className="mt-12 grid gap-10 lg:grid-cols-5">
-          <div className="lg:col-span-2">
+        <div className="mt-12 grid gap-10 lg:grid-cols-4">
+          <div className="lg:col-span-1">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-                <Droplet className="h-5 w-5" />
-              </span>
+              <BrandLogo className="h-11 w-11" alt="" />
               <div>
                 <div className="text-base font-extrabold tracking-tight text-slate-900">SmartWater</div>
                 <div className="text-xs text-slate-500">Track. Conserve. Save.</div>
@@ -131,7 +203,7 @@ export function Footer() {
           </div>
 
           <div>
-            <div className="text-sm font-extrabold text-slate-900">PRODUCT</div>
+            <div className="text-xs font-extrabold tracking-[0.16em] text-slate-900">PRODUCT</div>
             <div className="mt-4 space-y-2 text-sm text-slate-600">
               <Link className="block hover:text-slate-900" to="/virtual-meter">Virtual Meter</Link>
               <a className="block hover:text-slate-900" href="/#conservation">Conservation Tips</a>
@@ -141,22 +213,22 @@ export function Footer() {
           </div>
 
           <div>
-            <div className="text-sm font-extrabold text-slate-900">RESOURCES</div>
+            <div className="text-xs font-extrabold tracking-[0.16em] text-slate-900">SUPPORT</div>
             <div className="mt-4 space-y-2 text-sm text-slate-600">
+              <Link className="block hover:text-slate-900" to="/contact">Contact Us</Link>
               <a className="block hover:text-slate-900" href="/#features">Help Center</a>
-              <a className="block hover:text-slate-900" href="/#plans">Blog</a>
               <a className="block hover:text-slate-900" href="/#conservation">Water Facts</a>
               <a className="block hover:text-slate-900" href="/#contact">Community</a>
             </div>
           </div>
 
           <div>
-            <div className="text-sm font-extrabold text-slate-900">COMPANY</div>
+            <div className="text-xs font-extrabold tracking-[0.16em] text-slate-900">COMPANY</div>
             <div className="mt-4 space-y-2 text-sm text-slate-600">
               <a className="block hover:text-slate-900" href="/#features">About Us</a>
-              <a className="block hover:text-slate-900" href="/#plans">Careers</a>
-              <a className="block hover:text-slate-900" href="/#contact">Press</a>
+              <a className="block hover:text-slate-900" href="/#plans">Plans</a>
               <a className="block hover:text-slate-900" href="/#contact">Partners</a>
+              <a className="block hover:text-slate-900" href="/#contact">Privacy</a>
             </div>
           </div>
         </div>

@@ -1,0 +1,42 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 30
+      arrivalRate: 2
+      name: warmup
+    - duration: 60
+      arrivalRate: 10
+      name: sustained_load
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: activity_read_flow
+    weight: 80
+    flow:
+      - get:
+          url: "/api/activities"
+      - get:
+          url: "/api/activities/{{ $randomString(24) }}" # Simulate fetching various IDs
+
+  - name: activity_management_flow
+    weight: 20
+    flow:
+      - post:
+          url: "/api/activities"
+          json:
+            activityType: "Scheduled Check"
+            scheduledDate: "2026-12-05"
+            scheduledTime: "14:00"
+            location: "Pump House {{ $randomNumber(1, 10) }}"
+            notes: "Performance testing create flow"
+          capture:
+            - json: "$.data._id"
+              as: "newActivityId"
+      - put:
+          url: "/api/activities/{{ newActivityId }}"
+          json:
+            status: "In-Progress"
+          ifTrue: "newActivityId"

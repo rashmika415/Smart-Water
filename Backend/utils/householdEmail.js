@@ -36,6 +36,12 @@ async function sendHouseholdEstimate(userEmail, household) {
     const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER;
     const fromName = process.env.FROM_NAME || "Smart Water Management";
 
+    const recs = Array.isArray(household.billRecommendations) ? household.billRecommendations : [];
+    const recBlock =
+      recs.length > 0
+        ? `\n\n✨ Personalized savings recommendations:\n${recs.map((r, i) => `${i + 1}. ${r}`).join("\n")}\n`
+        : "";
+
     const mailOptions = {
       from: `"${fromName}" <${fromEmail}>`,
       to: userEmail,
@@ -55,7 +61,7 @@ async function sendHouseholdEstimate(userEmail, household) {
 • Number of Residents
 • Property Type
 • Weather & Climate Zone
-
+${recBlock}
 Thank you for using Smart Water  💙
 Stay water-wise and save responsibly! 💧`
     };

@@ -25,8 +25,18 @@ export async function apiFetch(path, { token, ...init } = {}) {
   if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
-  const payload = await parseJsonSafe(res);
+  let res;
+  let payload;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    payload = await parseJsonSafe(res);
+  } catch (error) {
+    throw new ApiError(
+      `Unable to connect to backend at ${API_BASE_URL}. Make sure backend is running.`,
+      0,
+      { cause: error?.message || "network_error" }
+    );
+  }
 
   if (!res.ok) {
     const message =
@@ -135,6 +145,41 @@ export const householdsApi = {
     }),
 };
 
+export const savingPlansApi = {
+  create: async (token, body) =>
+    apiFetch("/SavingPlan", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  getAll: async (token) =>
+    apiFetch("/SavingPlan", {
+      method: "GET",
+      token,
+    }),
+  getById: async (token, id) =>
+    apiFetch(`/SavingPlan/${id}`, {
+      method: "GET",
+      token,
+    }),
+  update: async (token, id, body) =>
+    apiFetch(`/SavingPlan/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: async (token, id) =>
+    apiFetch(`/SavingPlan/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+  getCalculation: async (token) =>
+    apiFetch("/SavingPlan/calculation", {
+      method: "GET",
+      token,
+    }),
+};
+
 export const zonesApi = {
   update: async (token, zoneId, body) =>
     apiFetch(`/api/zones/${zoneId}`, {
@@ -145,6 +190,24 @@ export const zonesApi = {
   delete: async (token, zoneId) =>
     apiFetch(`/api/zones/${zoneId}`, {
       method: "DELETE",
+      token,
+    }),
+};
+
+export const adminNotificationsApi = {
+  list: async (token, { limit = 20 } = {}) =>
+    apiFetch(`/api/admin-notifications?limit=${encodeURIComponent(String(limit))}`, {
+      method: "GET",
+      token,
+    }),
+  markRead: async (token, notificationId) =>
+    apiFetch(`/api/admin-notifications/${notificationId}/read`, {
+      method: "PATCH",
+      token,
+    }),
+  markAllRead: async (token) =>
+    apiFetch("/api/admin-notifications/read-all", {
+      method: "PATCH",
       token,
     }),
 };
@@ -228,6 +291,13 @@ export const usageApi = {
       token,
     });
   },
+  dailyWaterUsage: async (token, { days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    return apiFetch(`/usage/daily-water-usage?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
   carbonByActivity: async (token, { startDate = "", endDate = "" } = {}) => {
     const q = new URLSearchParams();
     if (startDate) q.set("startDate", startDate);
@@ -249,6 +319,77 @@ export const usageApi = {
     if (startDate) q.set("startDate", startDate);
     if (endDate) q.set("endDate", endDate);
     return apiFetch(`/usage/carbon-leaderboard?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminOverview: async (token, { startDate = "", endDate = "", days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/overview?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminHouseholds: async (
+    token,
+    {
+      page = 1,
+      limit = 10,
+      search = "",
+      startDate = "",
+      endDate = "",
+      days = 30,
+      sort = "-totalLiters",
+    } = {}
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      days: String(days),
+      sort,
+    });
+    if (search) q.set("search", search);
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/households?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminHouseholdDetails: async (
+    token,
+    householdId,
+    {
+      page = 1,
+      limit = 20,
+      activityType = "",
+      startDate = "",
+      endDate = "",
+      days = 30,
+      sort = "-occurredAt",
+    } = {}
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      days: String(days),
+      sort,
+    });
+    if (activityType) q.set("activityType", activityType);
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/households/${householdId}?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminAnomalies: async (token, { startDate = "", endDate = "", days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/anomalies?${q.toString()}`, {
       method: "GET",
       token,
     });

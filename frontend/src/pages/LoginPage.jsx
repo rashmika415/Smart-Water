@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Droplet, Eye, EyeOff } from "lucide-react";
+import { Clock3, Eye, EyeOff, Leaf, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { BrandLogo } from "../components/BrandLogo";
 import { useAuth } from "../auth/AuthContext";
 
 export function LoginPage() {
@@ -34,13 +35,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-10">
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef8ff_0%,#ffffff_54%,#f3fbf6_100%)] px-4 py-10">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(14,165,233,0.17),transparent_36%),radial-gradient(circle_at_86%_12%,rgba(16,185,129,0.14),transparent_34%)]"
+      />
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-              <Droplet className="h-5 w-5" />
-            </span>
+            <BrandLogo className="h-10 w-10" alt="" />
             <div className="text-sm font-extrabold text-slate-900">SmartWater</div>
           </Link>
           <div className="text-sm text-slate-600">
@@ -65,10 +68,36 @@ export function LoginPage() {
             <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
               Access your dashboard, usage analytics, and personalized water-saving recommendations.
             </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Card className="public-card-hover public-reveal border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50 p-4" style={{ animationDelay: "60ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Response Time</div>
+                <div className="mt-1 text-2xl font-black text-slate-900">&lt; 24h</div>
+                <div className="mt-1 text-xs text-slate-500">Support for account and setup issues.</div>
+              </Card>
+              <Card className="public-card-hover public-reveal border border-emerald-100 bg-gradient-to-br from-emerald-50 to-lime-50 p-4" style={{ animationDelay: "100ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Privacy First</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Secured account access
+                </div>
+              </Card>
+              <Card className="public-card-hover public-reveal border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4" style={{ animationDelay: "140ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">Carbon Impact</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Leaf className="h-4 w-4 text-amber-600" /> Track and reduce footprint
+                </div>
+              </Card>
+              <Card className="public-card-hover public-reveal border border-slate-200 bg-gradient-to-br from-slate-50 to-zinc-100 p-4" style={{ animationDelay: "180ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Availability</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Clock3 className="h-4 w-4 text-slate-600" /> Anytime dashboard access
+                </div>
+              </Card>
+            </div>
           </div>
 
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Card className="p-7 sm:p-9">
+            <Card className="public-card-hover p-7 sm:p-9">
               <div className="text-lg font-extrabold text-slate-900">Login</div>
               <div className="mt-1 text-sm text-slate-600">Use your email and password.</div>
 

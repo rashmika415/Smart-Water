@@ -136,8 +136,8 @@ export function HouseholdDetails() {
               required
             >
               <option value="">Select province</option>
-              {SRI_LANKA_PROVINCES.map((p) => (
-                <option key={p} value={p}>{p}</option>
+              {SRI_LANKA_PROVINCES.map((p, idx) => (
+                <option key={`${p}-${idx}`} value={p}>{p}</option>
               ))}
             </select>
           </div>
@@ -152,8 +152,8 @@ export function HouseholdDetails() {
               required
             />
             <datalist id="lk-towns-edit">
-              {SRI_LANKA_TOWNS.map((t) => (
-                <option key={t} value={t} />
+              {SRI_LANKA_TOWNS.map((t, idx) => (
+                <option key={`${t}-${idx}`} value={t} />
               ))}
             </datalist>
           </div>

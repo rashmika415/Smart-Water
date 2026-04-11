@@ -42,6 +42,10 @@ jest.mock("../../../utils/householdEmail", () => ({
   sendHouseholdEstimate: jest.fn(async () => ({ success: true, messageId: "test-message-id" })),
 }));
 
+jest.mock("../../../services/billRecommendationService", () => ({
+  getBillRecommendationsForHousehold: jest.fn(async () => ({ recommendations: ["Test tip"] })),
+}));
+
 const householdRoutes = require("../../../routes/householdRoutes");
 const zoneRoutes = require("../../../routes/zoneRoutes");
 const Household = require("../../../models/householdModel");

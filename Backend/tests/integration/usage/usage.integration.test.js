@@ -5,10 +5,13 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 
 const TEST_USER_ID = "507f1f77bcf86cd799439011";
 
+jest.setTimeout(180000);
+
 jest.mock("../../../middleware/authMiddleware", () => {
   return (req, _res, next) => {
     req.user = {
       id: req.headers["x-test-user-id"] || TEST_USER_ID,
+      role: req.headers["x-test-role"] || "user",
     };
     next();
   };
@@ -23,8 +26,6 @@ describe("Usage integration tests", () => {
   let app;
 
   beforeAll(async () => {
-    jest.setTimeout(60000);
-
     mongod = await MongoMemoryServer.create();
     await mongoose.connect(mongod.getUri());
 
@@ -34,8 +35,13 @@ describe("Usage integration tests", () => {
   });
 
   afterAll(async () => {
-    await mongoose.connection.close();
-    await mongod.stop();
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
+
+    if (mongod) {
+      await mongod.stop();
+    }
   });
 
   beforeEach(async () => {
@@ -183,7 +189,9 @@ describe("Usage integration tests", () => {
       liters: 45,
     });
 
-    const response = await request(app).get("/usage/carbon-leaderboard");
+    const response = await request(app)
+      .get("/usage/carbon-leaderboard")
+      .set("x-test-role", "admin");
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
