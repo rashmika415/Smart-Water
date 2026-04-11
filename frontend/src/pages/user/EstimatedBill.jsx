@@ -7,6 +7,23 @@ import { Button } from "../../components/ui/Button";
 import { jsPDF } from "jspdf";
 import { Receipt, Gauge, CloudSun, Sparkles, TrendingUp, Wallet, Download, Lightbulb } from "lucide-react";
 
+function SummaryMetric({ label, value, helper, icon: Icon, cardTone = "from-sky-50 to-cyan-50 border-sky-100", iconTone = "bg-sky-100 text-sky-700" }) {
+  return (
+    <Card className={`border bg-gradient-to-br p-4 ${cardTone}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
+          <div className="mt-2 text-2xl font-black tracking-tight text-slate-900">{value}</div>
+          {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
+        </div>
+        <span className={`grid h-9 w-9 place-items-center rounded-xl ${iconTone}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 export function EstimatedBill() {
   const { token } = useAuth();
   const [households, setHouseholds] = useState([]);
@@ -180,97 +197,99 @@ export function EstimatedBill() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-emerald-200/40 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 p-7 text-white shadow-xl">
-        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-        <div className="relative grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Billing Intelligence</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">Estimated Water Bill</h1>
-            <p className="mt-2 text-sm text-emerald-50/95 pr-8">
-              Bill is estimated using household residents, climate factor, and monthly unit rate.
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onDownloadEstimatedBill}
-              disabled={loading || households.length === 0}
-              className="mt-4 h-8 bg-white/90 px-3 text-xs text-emerald-700 hover:bg-white"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </Button>
-          </div>
-          <div className="rounded-2xl bg-white/10 p-5 backdrop-blur">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Total Monthly Bill</span>
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="mt-3 text-4xl font-black">Rs. {total.toFixed(2)}</div>
-          </div>
+    <div className="mx-auto max-w-6xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Estimated water bill</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Estimates use residents, climate factor, and monthly unit rate—export matches email content.
+          </p>
         </div>
-      </section>
+        <Button
+          type="button"
+          variant="ghost"
+          className="gap-2"
+          onClick={onDownloadEstimatedBill}
+          disabled={loading || households.length === 0}
+        >
+          <Download className="h-4 w-4" />
+          Download PDF
+        </Button>
+      </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Estimated Liters</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">{totalLiters.toLocaleString()}</p>
-            </div>
-            <BrandLogo className="h-6 w-6" alt="" />
-          </div>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Estimated Units</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">{totalUnits.toFixed(2)}</p>
-            </div>
-            <Gauge className="h-6 w-6 text-violet-600" />
-          </div>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Households Count</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">{households.length}</p>
-            </div>
-            <Receipt className="h-6 w-6 text-emerald-600" />
-          </div>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Average Bill / Household</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">{averageBill.toFixed(2)}</p>
-            </div>
-            <Wallet className="h-6 w-6 text-amber-600" />
-          </div>
-        </Card>
-      </section>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric
+          label="Total monthly bill"
+          value={`Rs. ${total.toFixed(2)}`}
+          helper="All households combined"
+          icon={Sparkles}
+          cardTone="from-sky-50 to-cyan-50 border-sky-100"
+          iconTone="bg-sky-100 text-sky-700"
+        />
+        <SummaryMetric
+          label="Estimated liters"
+          value={totalLiters.toLocaleString()}
+          helper="Monthly estimate"
+          icon={BrandLogo}
+          cardTone="from-emerald-50 to-lime-50 border-emerald-100"
+          iconTone="bg-emerald-100 text-emerald-700"
+        />
+        <SummaryMetric
+          label="Estimated units"
+          value={totalUnits.toFixed(2)}
+          helper="Cubic meters (m³)"
+          icon={Gauge}
+          cardTone="from-violet-50 to-indigo-50 border-violet-100"
+          iconTone="bg-violet-100 text-violet-700"
+        />
+        <SummaryMetric
+          label="Avg bill / household"
+          value={averageBill.toFixed(2)}
+          helper={households.length ? `${households.length} home(s)` : "No households"}
+          icon={Wallet}
+          cardTone="from-amber-50 to-orange-50 border-amber-100"
+          iconTone="bg-amber-100 text-amber-700"
+        />
+      </div>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Top Bill Contributor</p>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="text-base font-extrabold text-slate-900">{highestHousehold?.name || "No data yet"}</p>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-100">
-              {highestHousehold ? `Rs. ${Number(highestHousehold.predictedBill || 0).toFixed(2)}` : "-"}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <SummaryMetric
+          label="Households"
+          value={String(households.length)}
+          helper="In this summary"
+          icon={Receipt}
+          cardTone="from-teal-50 to-cyan-50 border-teal-100"
+          iconTone="bg-teal-100 text-teal-700"
+        />
+        <Card className="border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-4 ring-1 ring-slate-100">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Top bill contributor</div>
+              <div className="mt-2 text-lg font-black text-slate-900">{highestHousehold?.name || "No data yet"}</div>
+              <div className="mt-1 text-xs text-slate-500">
+                {highestHousehold ? `Rs. ${Number(highestHousehold.predictedBill || 0).toFixed(2)} estimated` : "Add a household to see rankings"}
+              </div>
+            </div>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700">
+              <TrendingUp className="h-4 w-4" />
             </span>
           </div>
         </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-slate-900">
-            <TrendingUp className="h-5 w-5 text-brand-700" />
-            <p className="text-sm font-extrabold">Billing insight</p>
+      </div>
+
+      <Card className="mt-5 border border-sky-100 bg-gradient-to-br from-sky-50/80 to-cyan-50/50 p-5 ring-1 ring-sky-100/80">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sky-700 ring-1 ring-sky-100">
+            <CloudSun className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-extrabold text-slate-900">Billing insight</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Highest bills often track dry climate zones and larger households. Keep city details accurate for better forecasts.
+            </p>
           </div>
-          <p className="mt-2 text-sm text-slate-700">
-            Highest bills often appear in dry climate zones and larger households. Updating city details helps keep estimates accurate.
-          </p>
-        </Card>
-      </section>
+        </div>
+      </Card>
 
       {error ? (
         <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-100">
@@ -278,7 +297,7 @@ export function EstimatedBill() {
         </div>
       ) : null}
 
-      <Card className="overflow-hidden p-0">
+      <Card className="mt-6 overflow-hidden border border-slate-200/80 p-0 shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -329,14 +348,13 @@ export function EstimatedBill() {
         </div>
       </Card>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-violet-600" />
-          <h2 className="text-lg font-extrabold text-slate-900">Personalized recommendations</h2>
+      <section className="mt-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-700">Personalized recommendations</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            From your profile, climate zone, and bill estimate—included in email and PDF too.
+          </p>
         </div>
-        <p className="text-sm text-slate-600">
-          Generated from your household profile, climate zone, and estimated bill (OpenAI). Shown per household below; the same tips are included in your email and PDF export.
-        </p>
         {households.some((h) => (Array.isArray(h.billRecommendations) ? h.billRecommendations : []).length > 0) ? (
           <div className="grid gap-4 md:grid-cols-2">
             {households.map((h) => {
@@ -346,8 +364,8 @@ export function EstimatedBill() {
                 ? new Date(h.billRecommendationsGeneratedAt).toLocaleString()
                 : null;
               return (
-                <Card key={h._id} className="border-violet-100 bg-gradient-to-br from-white to-violet-50/40 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Household</p>
+                <Card key={h._id} className="border border-violet-100 bg-gradient-to-br from-violet-50/70 to-indigo-50/40 p-5 ring-1 ring-violet-100/60">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600">Household</p>
                   <p className="mt-1 text-base font-extrabold text-slate-900">{h.name}</p>
                   {gen ? (
                     <p className="mt-1 text-xs text-slate-500">Updated {gen}</p>
@@ -364,7 +382,7 @@ export function EstimatedBill() {
             })}
           </div>
         ) : (
-          <Card className="border-dashed border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-600">
+          <Card className="border border-dashed border-slate-200 bg-slate-50/90 p-5 text-sm text-slate-600">
             No tips were returned for your households. Refresh this page— the server fills missing recommendations on
             load. If this persists, confirm the backend is running the latest code and check the server console for
             errors.
@@ -372,11 +390,10 @@ export function EstimatedBill() {
         )}
       </section>
 
-      <div className="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800 ring-1 ring-brand-100">
-        <div>
-          Total estimated monthly bill: <span className="font-bold">{total.toFixed(2)}</span>
-        </div>
-      </div>
+      <Card className="mt-5 border border-emerald-100 bg-gradient-to-r from-emerald-50/90 to-teal-50/60 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-100/80">
+        <span className="font-semibold">Total estimated monthly bill:</span>{" "}
+        <span className="font-black text-emerald-950">Rs. {total.toFixed(2)}</span>
+      </Card>
     </div>
   );
 }

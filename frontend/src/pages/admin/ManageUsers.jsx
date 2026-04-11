@@ -3,7 +3,41 @@ import { useAuth } from "../../auth/AuthContext";
 import { usersApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Search, Pencil, Trash2, Eye } from "lucide-react";
+import { pdfEnsureSpace, pdfFooterLine, pdfHeaderBanner } from "../../lib/adminPdf";
+import { Search, Pencil, Trash2, Eye, Download, Users, Shield, UserCircle, RefreshCw } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
+import { jsPDF } from "jspdf";
+
+const ROLE_COLORS = { admin: "#8b5cf6", user: "#0ea5e9", other: "#94a3b8" };
+
+function SummaryMetric({ label, value, helper, icon: Icon, cardTone = "from-sky-50 to-cyan-50 border-sky-100", iconTone = "bg-sky-100 text-sky-700" }) {
+  return (
+    <Card className={`border bg-gradient-to-br p-4 ${cardTone}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
+          <div className="mt-2 text-2xl font-black tracking-tight text-slate-900">{value}</div>
+          {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
+        </div>
+        <span className={`grid h-9 w-9 place-items-center rounded-xl ${iconTone}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+    </Card>
+  );
+}
 
 function Modal({ title, children, onClose }) {
   return (
@@ -23,6 +57,42 @@ function Modal({ title, children, onClose }) {
       </div>
     </div>
   );
+}
+
+function downloadUsersPdf(list, { filterNote }) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const left = 40;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const today = new Date().toISOString().slice(0, 10);
+  let y = pdfHeaderBanner(doc, {
+    title: "Users directory",
+    subtitle: `Generated ${today}${filterNote ? ` · ${filterNote}` : ""}`,
+    left,
+  });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Name", left, y);
+  doc.text("Email", left + 200, y);
+  doc.text("Role", left + 380, y);
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setDrawColor(226, 232, 240);
+  doc.line(left, y - 6, pageWidth - left, y - 6);
+  y += 8;
+
+  list.forEach((u) => {
+    y = pdfEnsureSpace(doc, y, 18, left, pageWidth);
+    const name = String(u.name || "—").slice(0, 42);
+    const email = String(u.email || "—").slice(0, 36);
+    doc.text(name, left, y);
+    doc.text(email, left + 200, y);
+    doc.text(String(u.role || "—"), left + 380, y);
+    y += 16;
+  });
+
+  pdfFooterLine(doc, left);
+  doc.save(`admin-users-${today}.pdf`);
 }
 
 export function ManageUsers() {
@@ -62,6 +132,29 @@ export function ManageUsers() {
       return name.includes(q) || email.includes(q);
     });
   }, [users, query]);
+
+  const stats = useMemo(() => {
+    const total = users.length;
+    let admins = 0;
+    let regular = 0;
+    let other = 0;
+    users.forEach((u) => {
+      const r = String(u.role || "").toLowerCase();
+      if (r === "admin") admins += 1;
+      else if (r === "user") regular += 1;
+      else other += 1;
+    });
+    return { total, admins, regular, other };
+  }, [users]);
+
+  const pieData = useMemo(() => {
+    const rows = [
+      { name: "Admin", value: stats.admins, key: "admin" },
+      { name: "User", value: stats.regular, key: "user" },
+    ];
+    if (stats.other > 0) rows.push({ name: "Other", value: stats.other, key: "other" });
+    return rows.filter((d) => d.value > 0);
+  }, [stats]);
 
   async function handleDelete(u) {
     if (!window.confirm(`Delete user ${u.email}? This cannot be undone.`)) return;
@@ -104,12 +197,116 @@ export function ManageUsers() {
     }
   }
 
+  function onDownloadPdf() {
+    const filterNote = query.trim() ? `Filter: "${query.trim()}" · ${filtered.length} row(s)` : `All users · ${filtered.length} row(s)`;
+    downloadUsersPdf(filtered, { filterNote });
+  }
+
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="text-2xl font-black tracking-tight text-slate-900">Manage users</h1>
-      <p className="mt-1 text-sm text-slate-600">Admin-only list with search, view, update, and delete.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Manage users</h1>
+          <p className="mt-1 text-sm text-slate-600">Admin-only list with search, view, update, and delete.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="ghost" className="gap-2" onClick={onDownloadPdf} disabled={loading || filtered.length === 0}>
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+          <Button type="button" variant="ghost" className="gap-2" onClick={load}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+      </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric
+          label="Total users"
+          value={String(stats.total)}
+          helper="In database"
+          icon={Users}
+          cardTone="from-sky-50 to-cyan-50 border-sky-100"
+          iconTone="bg-sky-100 text-sky-700"
+        />
+        <SummaryMetric
+          label="Administrators"
+          value={String(stats.admins)}
+          helper="Admin role"
+          icon={Shield}
+          cardTone="from-violet-50 to-indigo-50 border-violet-100"
+          iconTone="bg-violet-100 text-violet-700"
+        />
+        <SummaryMetric
+          label="Standard users"
+          value={String(stats.regular)}
+          helper="User role"
+          icon={UserCircle}
+          cardTone="from-emerald-50 to-teal-50 border-emerald-100"
+          iconTone="bg-emerald-100 text-emerald-700"
+        />
+        <SummaryMetric
+          label="Shown in table"
+          value={String(filtered.length)}
+          helper={query.trim() ? "After search filter" : "Same as total"}
+          icon={Search}
+          cardTone="from-amber-50 to-orange-50 border-amber-100"
+          iconTone="bg-amber-100 text-amber-700"
+        />
+      </div>
+
+      {pieData.length > 0 && stats.total > 0 ? (
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <Card className="border border-slate-200/80 p-5 shadow-sm">
+            <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-700">Role distribution (pie)</h2>
+            <p className="mt-1 text-xs text-slate-500">Share of accounts by role (all users).</p>
+            <div className="mt-4 h-[260px] w-full min-h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={52}
+                    outerRadius={88}
+                    paddingAngle={2}
+                  >
+                    {pieData.map((entry) => (
+                      <Cell key={entry.key} fill={ROLE_COLORS[entry.key] || ROLE_COLORS.other} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [`${v} users`, "Count"]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+          <Card className="border border-slate-200/80 p-5 shadow-sm">
+            <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-700">Role counts (bar)</h2>
+            <p className="mt-1 text-xs text-slate-500">Same data as a bar chart for quick comparison.</p>
+            <div className="mt-4 h-[260px] w-full min-h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={pieData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => [`${v} users`, "Count"]} />
+                  <Bar dataKey="value" name="Users" radius={[8, 8, 0, 0]}>
+                    {pieData.map((entry) => (
+                      <Cell key={entry.key} fill={ROLE_COLORS[entry.key] || ROLE_COLORS.other} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -119,9 +316,6 @@ export function ManageUsers() {
             className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none ring-brand-300 focus:ring-2"
           />
         </div>
-        <Button type="button" variant="ghost" onClick={load}>
-          Refresh
-        </Button>
       </div>
 
       {error ? (
@@ -130,7 +324,7 @@ export function ManageUsers() {
         </div>
       ) : null}
 
-      <Card className="mt-6 overflow-hidden p-0">
+      <Card className="mt-6 overflow-hidden border border-slate-200/80 p-0 shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
