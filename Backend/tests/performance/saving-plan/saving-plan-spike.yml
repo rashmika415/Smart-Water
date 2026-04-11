@@ -1,0 +1,35 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  ensure:
+    p95: 1200
+    p99: 2500
+    maxErrorRate: 2
+  phases:
+    - duration: 20
+      arrivalRate: 4
+      name: baseline
+    - duration: 30
+      arrivalRate: 20
+      name: spike
+    - duration: 30
+      arrivalRate: 8
+      name: recovery
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: saving_plan_spike_read_path
+    flow:
+      - get:
+          url: "/SavingPlan"
+      - get:
+          url: "/SavingPlan/calculation"
+
+  - name: saving_plan_spike_admin_path
+    flow:
+      - get:
+          url: "/SavingPlan/admin"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.PERF_ADMIN_JWT_TOKEN }}"

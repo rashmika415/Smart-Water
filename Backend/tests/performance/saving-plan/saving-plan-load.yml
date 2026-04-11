@@ -1,0 +1,47 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  ensure:
+    p95: 1200
+    p99: 2500
+    maxErrorRate: 2
+  phases:
+    - duration: 30
+      arrivalRate: 2
+      name: warmup
+    - duration: 60
+      arrivalRate: 10
+      name: sustained_load
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: saving_plan_read_flow
+    weight: 70
+    flow:
+      - get:
+          url: "/SavingPlan"
+      - get:
+          url: "/SavingPlan/calculation"
+
+  - name: saving_plan_lookup_flow
+    weight: 30
+    flow:
+      - get:
+          url: "/SavingPlan"
+          capture:
+            - json: "$.savingPlans[0]._id"
+              as: "planId"
+              strict: false
+      - get:
+          url: "/SavingPlan/{{ planId }}"
+          ifTrue: "planId"
+
+  - name: saving_plan_admin_read_flow
+    weight: 10
+    flow:
+      - get:
+          url: "/SavingPlan/admin"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.PERF_ADMIN_JWT_TOKEN }}"
