@@ -47,6 +47,14 @@ const householdSchema = new mongoose.Schema(
       default: 0
     },
 
+    billRecommendations: {
+      type: [String],
+      default: []
+    },
+    billRecommendationsGeneratedAt: {
+      type: Date
+    },
+
     // ✅ NEW: link zones
     zones: [{ type: mongoose.Schema.Types.ObjectId, ref: "Zone" }]
   },
