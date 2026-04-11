@@ -2,8 +2,9 @@ import React from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../ui/Button";
+import { BrandLogo } from "../BrandLogo";
 
-import { Droplet, Home, LayoutDashboard, User, Building2, Receipt, CloudSun, LogOut, Activity, Leaf, Waves, ClipboardList } from "lucide-react";
+import { Home, LayoutDashboard, User, Building2, Receipt, CloudSun, LogOut, Activity, Leaf, Waves, ClipboardList, Sparkles } from "lucide-react";
 
 import clsx from "clsx";
 
@@ -15,6 +16,7 @@ const nav = [
   { to: "/user/carbon-analytics", label: "Carbon Analytics", icon: Leaf },
   { to: "/user/households", label: "My Households", icon: Building2 },
   { to: "/user/estimated-bill", label: "Estimated Bill", icon: Receipt },
+  { to: "/user/saving-plane", label: "Saving Plane", icon: Sparkles },
   { to: "/user/weather-insights", label: "Weather Insights", icon: CloudSun },
   { to: "/user/activities", label: "Maintenance Updates", icon: ClipboardList },
 ];
@@ -29,9 +31,7 @@ export function UserLayout() {
         <aside className="hidden w-64 shrink-0 border-r border-slate-200/80 bg-white/90 backdrop-blur lg:block">
           <div className="flex h-full flex-col px-4 py-6">
             <Link to="/user" className="flex items-center gap-2 px-2">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-                <Droplet className="h-5 w-5" />
-              </span>
+              <BrandLogo className="h-10 w-10 shrink-0" alt="" />
               <div>
                 <div className="text-sm font-extrabold text-slate-900">SmartWater</div>
                 <div className="text-[11px] font-semibold text-brand-700">User Panel</div>
@@ -48,7 +48,7 @@ export function UserLayout() {
                     clsx(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
                       isActive
-                        ? "bg-brand-50 text-brand-900 ring-1 ring-brand-100"
+                        ? "bg-slate-50 text-slate-900 ring-1 ring-slate-100"
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                     )
                   }
@@ -74,9 +74,12 @@ export function UserLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur">
             <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-              <div>
-                <div className="text-sm font-extrabold text-slate-900">Welcome, {user?.name || "User"}</div>
-                <div className="truncate text-xs text-slate-500">{user?.email}</div>
+              <div className="flex min-w-0 items-center gap-3">
+                <BrandLogo className="h-9 w-9 shrink-0 lg:hidden" alt="" />
+                <div className="min-w-0">
+                  <div className="text-sm font-extrabold text-slate-900">Welcome, {user?.name || "User"}</div>
+                  <div className="truncate text-xs text-slate-500">{user?.email}</div>
+                </div>
               </div>
               <Button onClick={logout} variant="dark" size="sm" className="gap-2">
                 <LogOut className="h-4 w-4" />

@@ -1,0 +1,39 @@
+config:
+  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  phases:
+    - duration: 30
+      arrivalRate: 2
+      name: warmup
+    - duration: 60
+      arrivalRate: 6
+      name: sustained_load
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Content-Type: "application/json"
+
+scenarios:
+  - name: user_and_household_reads
+    weight: 70
+    flow:
+      - get:
+          url: "/api/users/profile"
+      - get:
+          url: "/api/households/my-households"
+      - get:
+          url: "/api/households/my-with-zones"
+
+  - name: household_create_flow
+    weight: 30
+    flow:
+      - post:
+          url: "/api/households"
+          json:
+            name: "Perf Home {{ $randomString() }}"
+            numberOfResidents: 3
+            propertyType: "house"
+            location:
+              city: "Colombo"
+              state: "Western"
+              country: "Sri Lanka"
+

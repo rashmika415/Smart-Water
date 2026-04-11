@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { activitiesApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
+import { BrandLogo } from "../../components/BrandLogo";
 import { Button } from "../../components/ui/Button";
 import { Calendar, MapPin, Clock, CheckCircle2, Timer, AlertCircle, Info, Shovel, X, PlusCircle } from "lucide-react";
 import clsx from "clsx";
@@ -210,7 +211,10 @@ export function UserActivities() {
                <PlusCircle className="h-4 w-4" /> Report Issue Now
             </Button>
          </div>
-         <Droplet className="absolute right-[-20px] bottom-[-20px] h-48 w-48 text-white/10 -rotate-12 transition-all group-hover:scale-110 group-hover:rotate-0 duration-500" />
+         <BrandLogo
+              className="absolute right-[-20px] bottom-[-20px] h-48 w-48 opacity-20 -rotate-12 transition-all group-hover:scale-110 group-hover:rotate-0 duration-500"
+              alt=""
+            />
       </div>
 
       {/* Report Issue Modal */}
@@ -318,23 +322,4 @@ export function UserActivities() {
       )}
     </div>
   );
-}
-
-function Droplet(props) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
-        </svg>
-    )
 }
