@@ -9,6 +9,7 @@ import {
   Layers3,
   ClipboardList,
   Droplets,
+  Sparkles,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -32,6 +33,7 @@ export const ADMIN_SECTIONS = [
     items: [
       { to: "/admin/activities", label: "Manage Activities", icon: ClipboardList, end: false },
       { to: "/admin/usage", label: "Manage Usage", icon: Droplets, end: false },
+      { to: "/admin/saving-plans", label: "Saving Plans", icon: Sparkles, end: false },
     ],
   },
 ];

@@ -14,7 +14,11 @@ jest.mock('../../../lib/api', () => ({
 }));
 
 jest.mock('../../../components/ui/Card', () => ({ Card: ({ children }) => <div>{children}</div> }));
-jest.mock('lucide-react', () => ({ Sparkles: () => <span data-testid="icon-sparkles" /> }));
+jest.mock('lucide-react', () => ({
+  Sparkles: () => <span data-testid="icon-sparkles" />,
+  Download: () => <span data-testid="icon-download" />,
+  FileText: () => <span data-testid="icon-filetext" />,
+}));
 
 beforeEach(() => {
   savingPlansApi.getAll.mockReset();
