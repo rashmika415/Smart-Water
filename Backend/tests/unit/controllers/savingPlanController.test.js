@@ -1,8 +1,17 @@
 jest.mock("../../../models/SavingPlanModel", () => {
   const SavingPlan = jest.fn();
-  SavingPlan.find = jest.fn();
+  
+  // Mock find to return an object with populate method
+  SavingPlan.find = jest.fn().mockReturnValue({
+    populate: jest.fn().mockResolvedValue([])
+  });
+  
+  // Mock findById to return an object with populate method
+  SavingPlan.findById = jest.fn().mockReturnValue({
+    populate: jest.fn().mockResolvedValue(null)
+  });
+  
   SavingPlan.findOne = jest.fn();
-  SavingPlan.findById = jest.fn();
   SavingPlan.findByIdAndUpdate = jest.fn();
   SavingPlan.findByIdAndDelete = jest.fn();
   SavingPlan.prototype.save = jest.fn();
@@ -72,7 +81,9 @@ describe("savingPlanController unit tests", () => {
       };
 
       Household.findOne.mockResolvedValue(mockHousehold);
-      SavingPlan.find.mockResolvedValue([mockSavingPlan]);
+      SavingPlan.find.mockReturnValue({
+        populate: jest.fn().mockResolvedValue([mockSavingPlan])
+      });
       generateSavingTips.mockReturnValue(["Tip 1", "Tip 2"]);
       calculateWaterSaving.mockReturnValue({
         dailySavingsLiters: 10,
@@ -107,7 +118,9 @@ describe("savingPlanController unit tests", () => {
         }),
       };
 
-      SavingPlan.find.mockResolvedValue([mockSavingPlan]);
+      SavingPlan.find.mockReturnValue({
+        populate: jest.fn().mockResolvedValue([mockSavingPlan])
+      });
       generateSavingTips.mockReturnValue(["Tip 1"]);
       calculateWaterSaving.mockReturnValue({});
       getWeatherForLocation.mockResolvedValue({});
@@ -309,7 +322,9 @@ describe("savingPlanController unit tests", () => {
         }),
       };
 
-      SavingPlan.findById.mockResolvedValue(mockSavingPlan);
+      SavingPlan.findById.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockSavingPlan)
+      });
       generateSavingTips.mockReturnValue(["Tip 1"]);
       calculateWaterSaving.mockReturnValue({
         dailySavingsLiters: 10,
@@ -330,7 +345,9 @@ describe("savingPlanController unit tests", () => {
     });
 
     it("should return 404 for non-existent plan", async () => {
-      SavingPlan.findById.mockResolvedValue(null);
+      SavingPlan.findById.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(null)
+      });
 
       const req = {
         params: { id: "non-existent" },

@@ -52,6 +52,8 @@ describe("Saving Plan integration tests", () => {
         country: "Sri Lanka",
       },
       userId: TEST_USER_ID,
+      propertyType: "apartment",
+      numberOfResidents: 4,
     });
   });
 

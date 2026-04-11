@@ -1,5 +1,5 @@
 config:
-  target: "{{ $processEnvironment.PERF_BASE_URL }}"
+  target: "http://localhost:3000"
   phases:
     - duration: 30
       arrivalRate: 2
@@ -9,7 +9,7 @@ config:
       name: sustained_load
   defaults:
     headers:
-      Authorization: "Bearer {{ $processEnvironment.PERF_JWT_TOKEN }}"
+      Authorization: "Bearer test-token"
       Content-Type: "application/json"
 
 scenarios:

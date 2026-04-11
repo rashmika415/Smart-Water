@@ -6,14 +6,14 @@ const calculateWaterSaving = (totalWaterUsagePerDay, targetReductionPercentage) 
     targetReductionPercentage === undefined
   ) return null;
 
-  const waterToSave = (totalWaterUsagePerDay * targetReductionPercentage) / 100;
-  const targetDailyUsage = totalWaterUsagePerDay - waterToSave;
+  const dailySavingsLiters = (totalWaterUsagePerDay * targetReductionPercentage) / 100;
+  const monthlySavingsLiters = dailySavingsLiters * 30;
+  const yearlySavingsLiters = dailySavingsLiters * 365;
 
   return {
-    totalWaterUsagePerDay,
-    targetReductionPercentage,
-    waterToSaveLiters: waterToSave,
-    targetDailyUsage,
+    dailySavingsLiters,
+    monthlySavingsLiters,
+    yearlySavingsLiters,
   };
 };
 
