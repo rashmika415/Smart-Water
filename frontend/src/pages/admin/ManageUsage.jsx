@@ -3,15 +3,16 @@ import { useAuth } from "../../auth/AuthContext";
 import { usageApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Search, Eye, ChevronLeft, ChevronRight, Droplets, Leaf, Home, Activity } from "lucide-react";
+import { Search, Eye, ChevronLeft, ChevronRight, Droplets, Leaf, Home, Activity, RefreshCw, Download } from "lucide-react";
 
-function MetricCard({ label, value, icon: Icon, tone = "bg-sky-50 text-sky-700" }) {
+function MetricCard({ label, value, helper, icon: Icon, tone = "bg-sky-50 text-sky-700" }) {
   return (
     <Card className="border border-slate-200/80 p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
           <div className="mt-3 text-3xl font-black tracking-tight text-slate-900">{value}</div>
+          {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
         </div>
         <div className={`grid h-11 w-11 place-items-center rounded-2xl ${tone}`}>
           <Icon className="h-5 w-5" />
@@ -22,6 +23,68 @@ function MetricCard({ label, value, icon: Icon, tone = "bg-sky-50 text-sky-700" 
 }
 
 function HouseholdDetailsModal({ open, data, loading, error, onClose }) {
+  const [activityFilter, setActivityFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setActivityFilter("all");
+    setSourceFilter("all");
+    setFromDate("");
+    setToDate("");
+  }, [open, data?.household?._id]);
+
+  const activityOptions = useMemo(() => {
+    const set = new Set((data?.records || []).map((r) => String(r?.activityType || "")).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data?.records]);
+
+  const filteredRecords = useMemo(() => {
+    const start = fromDate ? new Date(fromDate) : null;
+    const end = toDate ? new Date(toDate) : null;
+
+    return (data?.records || []).filter((record) => {
+      const matchesActivity = activityFilter === "all" || String(record?.activityType || "") === activityFilter;
+      const matchesSource = sourceFilter === "all" || String(record?.source || "manual") === sourceFilter;
+      const occurred = record?.occurredAt ? new Date(record.occurredAt) : null;
+
+      const matchesFrom = !start || (occurred && occurred >= start);
+      const matchesTo = !end || (occurred && occurred <= new Date(`${toDate}T23:59:59`));
+
+      return matchesActivity && matchesSource && matchesFrom && matchesTo;
+    });
+  }, [data?.records, activityFilter, sourceFilter, fromDate, toDate]);
+
+  const exportDetailsCsv = useCallback(() => {
+    if (!filteredRecords.length) return;
+
+    const headers = ["Date", "Activity", "Liters", "CarbonKg", "Source"];
+    const rows = filteredRecords.map((record) => [
+      record?.occurredAt ? new Date(record.occurredAt).toISOString() : "",
+      record?.activityType || "",
+      Math.round(Number(record?.liters || 0)),
+      Number(record?.carbonFootprint?.carbonKg || 0).toFixed(3),
+      record?.source || "manual",
+    ]);
+
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `household-usage-details-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [filteredRecords]);
+
   if (!open) return null;
 
   return (
@@ -32,13 +95,18 @@ function HouseholdDetailsModal({ open, data, loading, error, onClose }) {
             <div className="text-lg font-extrabold text-slate-900">Household usage details</div>
             <div className="text-xs text-slate-500">Detailed records for selected household</div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-2 py-1 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={exportDetailsCsv} disabled={!filteredRecords.length} className="gap-1.5">
+              <Download className="h-4 w-4" /> Export
+            </Button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-2 py-1 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         <div className="px-5 py-4">
@@ -76,6 +144,47 @@ function HouseholdDetailsModal({ open, data, loading, error, onClose }) {
               </div>
 
               <Card className="overflow-hidden p-0">
+                <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                  <div className="grid gap-2 sm:grid-cols-4">
+                    <select
+                      value={activityFilter}
+                      onChange={(e) => setActivityFilter(e.target.value)}
+                      className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+                    >
+                      <option value="all">All activities</option>
+                      {activityOptions.map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={sourceFilter}
+                      onChange={(e) => setSourceFilter(e.target.value)}
+                      className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+                    >
+                      <option value="all">All sources</option>
+                      <option value="manual">Manual</option>
+                      <option value="api">API</option>
+                    </select>
+
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+                    />
+
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    Showing {filteredRecords.length} of {(data.records || []).length} records
+                  </div>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -88,14 +197,14 @@ function HouseholdDetailsModal({ open, data, loading, error, onClose }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                      {(data.records || []).length === 0 ? (
+                      {filteredRecords.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                            No records in selected period.
+                            No records match the selected filters. Try wider dates or clear activity/source filters.
                           </td>
                         </tr>
                       ) : (
-                        (data.records || []).map((record) => (
+                        filteredRecords.map((record) => (
                           <tr key={record._id} className="hover:bg-slate-50/80">
                             <td className="px-4 py-3 text-slate-600">
                               {record.occurredAt ? new Date(record.occurredAt).toLocaleString() : "-"}
@@ -128,7 +237,8 @@ export function ManageUsage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sort, setSort] = useState("-totalLiters");
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
+  const [jumpPage, setJumpPage] = useState("1");
 
   const [overview, setOverview] = useState(null);
   const [anomalies, setAnomalies] = useState(null);
@@ -153,7 +263,11 @@ export function ManageUsage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, days, sort]);
+  }, [debouncedSearch, days, sort, limit]);
+
+  useEffect(() => {
+    setJumpPage(String(rowsData.page || 1));
+  }, [rowsData.page]);
 
   const loadOverview = useCallback(async () => {
     setLoadingOverview(true);
@@ -246,6 +360,40 @@ export function ManageUsage() {
     return overview.topActivities.slice(0, 4);
   }, [overview]);
 
+  const clearFilters = useCallback(() => {
+    setDays(30);
+    setSearch("");
+    setDebouncedSearch("");
+    setSort("-totalLiters");
+    setLimit(10);
+    setPage(1);
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadOverview(), loadAnomalies(), loadHouseholds()]);
+  }, [loadOverview, loadAnomalies, loadHouseholds]);
+
+  const rangeLabel = useMemo(() => {
+    if (!rowsData.total) return "Showing 0 results";
+    const start = (rowsData.page - 1) * limit + 1;
+    const end = Math.min(rowsData.page * limit, rowsData.total);
+    return `Showing ${start}-${end} of ${rowsData.total} households`;
+  }, [rowsData.total, rowsData.page, limit]);
+
+  const applyJumpPage = useCallback(() => {
+    const parsed = Number(jumpPage || 1);
+    const target = Math.max(1, Math.min(Number(rowsData.totalPages || 1), parsed));
+    setPage(target);
+  }, [jumpPage, rowsData.totalPages]);
+
+  const getSuspiciousSeverity = useCallback((item) => {
+    const threshold = Number(anomalies?.thresholds?.spikeLitersThreshold || 0);
+    const peak = Number(item?.maxSingleRecordLiters || 0);
+    if (!threshold || peak >= threshold * 2) return { label: "High", tone: "bg-rose-100 text-rose-700" };
+    if (peak >= threshold * 1.25) return { label: "Medium", tone: "bg-amber-100 text-amber-700" };
+    return { label: "Low", tone: "bg-emerald-100 text-emerald-700" };
+  }, [anomalies?.thresholds?.spikeLitersThreshold]);
+
   const exportTableToCsv = useCallback(() => {
     const rows = rowsData.rows || [];
     if (!rows.length) return;
@@ -325,14 +473,11 @@ export function ManageUsage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" onClick={loadOverview}>
-              Refresh overview
+            <Button type="button" variant="ghost" onClick={clearFilters}>
+              Clear filters
             </Button>
-            <Button type="button" variant="ghost" onClick={loadAnomalies}>
-              Refresh alerts
-            </Button>
-            <Button type="button" variant="ghost" onClick={loadHouseholds}>
-              Refresh table
+            <Button type="button" onClick={refreshAll} className="gap-2">
+              <RefreshCw className="h-4 w-4" /> Refresh all
             </Button>
           </div>
         </div>
@@ -346,24 +491,28 @@ export function ManageUsage() {
         <MetricCard
           label="Total liters"
           value={loadingOverview ? "-" : `${Number(overview?.totals?.totalLiters || 0).toLocaleString()} L`}
+          helper={`Last ${days} days`}
           icon={Droplets}
           tone="bg-sky-50 text-sky-700"
         />
         <MetricCard
           label="Carbon emission"
           value={loadingOverview ? "-" : `${Number(overview?.totals?.totalCarbonKg || 0).toFixed(3)} kg`}
+          helper={`Last ${days} days`}
           icon={Leaf}
           tone="bg-emerald-50 text-emerald-700"
         />
         <MetricCard
           label="Active households"
           value={loadingOverview ? "-" : Number(overview?.totals?.activeHouseholds || 0).toLocaleString()}
+          helper="Reporting activity"
           icon={Home}
           tone="bg-amber-50 text-amber-700"
         />
         <MetricCard
           label="Usage records"
           value={loadingOverview ? "-" : Number(overview?.totals?.usageCount || 0).toLocaleString()}
+          helper={`Window: ${days} days`}
           icon={Activity}
           tone="bg-violet-50 text-violet-700"
         />
@@ -372,7 +521,7 @@ export function ManageUsage() {
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-5">
           <div className="text-sm font-extrabold text-slate-900">Daily liters trend</div>
-          <div className="mt-1 text-xs text-slate-500">Liters consumed per day in selected period</div>
+          <div className="mt-1 text-xs text-slate-500">Liters consumed per day in selected period (hover bars for exact value)</div>
           <div className="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-10 md:grid-cols-12 xl:grid-cols-15">
             {(overview?.trend || []).slice(-15).map((item) => {
               const max = Math.max(
@@ -383,12 +532,20 @@ export function ManageUsage() {
               return (
                 <div key={item.date} className="text-center">
                   <div className="mx-auto flex h-24 w-6 items-end rounded-full bg-slate-100 p-1">
-                    <div className="w-full rounded-full bg-gradient-to-t from-cyan-500 to-sky-300" style={{ height: `${pct}%` }} />
+                    <div
+                      className="w-full rounded-full bg-gradient-to-t from-cyan-500 to-sky-300"
+                      style={{ height: `${pct}%` }}
+                      title={`${item?.date || "-"}: ${Number(item?.totalLiters || 0).toLocaleString()} L`}
+                    />
                   </div>
                   <div className="mt-2 text-[10px] text-slate-500">{String(item.date || "").slice(5)}</div>
                 </div>
               );
             })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" /> Daily liters bars</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-300" /> Highest day scales chart</span>
           </div>
         </Card>
 
@@ -397,7 +554,7 @@ export function ManageUsage() {
           <div className="mt-1 text-xs text-slate-500">Highest water-consuming activity types</div>
           <div className="mt-4 space-y-2">
             {activitySummary.length === 0 ? (
-              <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">No data for this period.</div>
+              <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">No data for this period. Try switching to last 90 days or refreshing overview.</div>
             ) : (
               activitySummary.map((activity) => (
                 <div key={activity.activityType} className="rounded-xl bg-slate-50 px-3 py-3 ring-1 ring-slate-100">
@@ -437,11 +594,16 @@ export function ManageUsage() {
               {loadingAnomalies ? (
                 <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">Loading anomaly households...</div>
               ) : (anomalies?.suspiciousHouseholds || []).length === 0 ? (
-                <div className="rounded-xl bg-emerald-50 px-3 py-4 text-sm text-emerald-700">No suspicious household pattern detected.</div>
+                <div className="rounded-xl bg-emerald-50 px-3 py-4 text-sm text-emerald-700">No suspicious household pattern detected. This usually means usage is within expected baseline.</div>
               ) : (
                 (anomalies?.suspiciousHouseholds || []).slice(0, 5).map((item) => (
                   <div key={item.householdId} className="rounded-xl bg-amber-50 px-3 py-3 ring-1 ring-amber-100">
-                    <div className="text-sm font-semibold text-slate-900">{item.householdName || "Unknown"}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-slate-900">{item.householdName || "Unknown"}</div>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${getSuspiciousSeverity(item).tone}`}>
+                        {getSuspiciousSeverity(item).label}
+                      </span>
+                    </div>
                     <div className="mt-1 text-xs text-slate-600">
                       Avg {Number(item.avgLitersPerRecord || 0).toLocaleString()} L/record • Peak {Number(item.maxSingleRecordLiters || 0).toLocaleString()} L
                     </div>
@@ -457,7 +619,7 @@ export function ManageUsage() {
               {loadingAnomalies ? (
                 <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">Loading spike records...</div>
               ) : (anomalies?.spikeRecords || []).length === 0 ? (
-                <div className="rounded-xl bg-emerald-50 px-3 py-4 text-sm text-emerald-700">No extreme spike records in this period.</div>
+                <div className="rounded-xl bg-emerald-50 px-3 py-4 text-sm text-emerald-700">No extreme spike records in this period. Try a wider date range for deeper audit.</div>
               ) : (
                 (anomalies?.spikeRecords || []).slice(0, 5).map((record) => (
                   <div key={record.usageId} className="rounded-xl bg-rose-50 px-3 py-3 ring-1 ring-rose-100">
@@ -504,6 +666,14 @@ export function ManageUsage() {
             Export CSV
           </Button>
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Window: {days} days</span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Sort: {sort}</span>
+          {debouncedSearch ? (
+            <span className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-800">Search: {debouncedSearch}</span>
+          ) : null}
+        </div>
       </Card>
 
       {errorRows ? (
@@ -513,40 +683,42 @@ export function ManageUsage() {
       <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-4 py-3">Household</th>
                 <th className="px-4 py-3">City</th>
-                <th className="px-4 py-3">Residents</th>
-                <th className="px-4 py-3">Total liters</th>
-                <th className="px-4 py-3">Carbon (kg)</th>
-                <th className="px-4 py-3">Records</th>
+                <th className="px-4 py-3 text-right">Residents</th>
+                <th className="px-4 py-3 text-right">Total liters</th>
+                <th className="px-4 py-3 text-right">Carbon (kg)</th>
+                <th className="px-4 py-3 text-right">Records</th>
                 <th className="px-4 py-3">Latest usage</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loadingRows ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                    Loading household analytics...
-                  </td>
-                </tr>
+                Array.from({ length: limit }).map((_, idx) => (
+                  <tr key={`skeleton-${idx}`}>
+                    <td colSpan={8} className="px-4 py-3">
+                      <div className="h-6 animate-pulse rounded bg-slate-100" />
+                    </td>
+                  </tr>
+                ))
               ) : rowsData.rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                    No household usage data found.
+                    No household usage data found. Try clearing filters or expanding the date window.
                   </td>
                 </tr>
               ) : (
-                rowsData.rows.map((row) => (
-                  <tr key={row.householdId} className="hover:bg-slate-50/80">
+                rowsData.rows.map((row, idx) => (
+                  <tr key={row.householdId} className={idx % 2 === 0 ? "hover:bg-slate-50/80" : "bg-slate-50/30 hover:bg-slate-50/80"}>
                     <td className="px-4 py-3 font-medium text-slate-900">{row.householdName || "-"}</td>
                     <td className="px-4 py-3 text-slate-600">{row.city || "-"}</td>
-                    <td className="px-4 py-3">{Number(row.residents || 0)}</td>
-                    <td className="px-4 py-3">{Number(row.totalLiters || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3">{Number(row.totalCarbonKg || 0).toFixed(3)}</td>
-                    <td className="px-4 py-3">{Number(row.usageCount || 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">{Number(row.residents || 0)}</td>
+                    <td className="px-4 py-3 text-right">{Number(row.totalLiters || 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">{Number(row.totalCarbonKg || 0).toFixed(3)}</td>
+                    <td className="px-4 py-3 text-right">{Number(row.usageCount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-slate-600">
                       {row.latestUsageAt ? new Date(row.latestUsageAt).toLocaleDateString() : "-"}
                     </td>
@@ -568,10 +740,18 @@ export function ManageUsage() {
       </Card>
 
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-        <div className="text-sm text-slate-600">
-          Page {rowsData.page} of {rowsData.totalPages || 1} • {rowsData.total} households
-        </div>
-        <div className="flex items-center gap-2">
+        <div className="text-sm text-slate-600">{rangeLabel}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+          >
+            <option value={10}>10 / page</option>
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
+
           <Button
             type="button"
             variant="ghost"
@@ -592,6 +772,26 @@ export function ManageUsage() {
           >
             Next <ChevronRight className="h-4 w-4" />
           </Button>
+
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
+            <span className="text-xs text-slate-500">Page</span>
+            <input
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value.replace(/[^0-9]/g, ""))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyJumpPage();
+              }}
+              className="w-12 bg-transparent text-center text-xs font-semibold text-slate-700 outline-none"
+            />
+            <span className="text-xs text-slate-500">/ {rowsData.totalPages || 1}</span>
+            <button
+              type="button"
+              onClick={applyJumpPage}
+              className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-200"
+            >
+              Go
+            </button>
+          </div>
         </div>
       </div>
 

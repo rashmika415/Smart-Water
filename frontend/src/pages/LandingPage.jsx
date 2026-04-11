@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   Activity,
   BadgePercent,
@@ -10,12 +11,12 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
-  Zap,
 } from "lucide-react";
 import { Navbar, Footer } from "../components/SiteShell";
 import { BrandLogo } from "../components/BrandLogo";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { useAuth } from "../auth/AuthContext";
 
 function Wave({ flip = false }) {
   return (
@@ -157,24 +158,26 @@ function Testimonial({ quote, name, title }) {
 }
 
 export function LandingPage() {
+  const { token } = useAuth();
+
   return (
     <div>
       <Navbar />
 
       {/* Hero */}
       <section className="relative">
-        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8">
+        <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8 lg:pt-12">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/60 px-4 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/70 shadow-sm">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80 shadow-sm">
                 <Sparkles className="h-4 w-4 text-brand-600" />
                 Smart tracking for everyday households
               </div>
 
-              <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-                Track Your Water, <br />
+              <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-900 sm:text-[3.25rem]">
+                Track Water Clearly, <br />
                 <span className="bg-gradient-to-r from-brand-700 to-sky-500 bg-clip-text text-transparent">
-                  Save The Planet
+                  Save More Every Month
                 </span>
               </h1>
 
@@ -184,9 +187,11 @@ export function LandingPage() {
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button size="lg">Start Tracking Free</Button>
-                <Button size="lg" variant="ghost">
-                  Watch Demo
+                <Button as={Link} to="/register" size="lg">
+                  Start Tracking Free
+                </Button>
+                <Button as={Link} to="/virtual-meter" size="lg" variant="ghost">
+                  Explore Virtual Meter
                 </Button>
               </div>
 
@@ -199,13 +204,13 @@ export function LandingPage() {
 
             {/* Hero visual */}
             <div className="relative">
-              <div className="absolute -inset-6 rounded-[40px] bg-gradient-to-br from-brand-200/50 via-sky-200/30 to-white/10 blur-2xl" />
+              <div className="absolute -inset-5 rounded-[34px] bg-gradient-to-br from-brand-200/45 via-sky-100/20 to-transparent blur-2xl" />
 
               <motion.div
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, ease: "easeOut" }}
-                className="relative rounded-[34px] overflow-hidden shadow-glow"
+                className="relative overflow-hidden rounded-[30px] border border-slate-200/70 shadow-soft"
               >
                 <img 
                   src="/3.jpg" 
@@ -226,17 +231,17 @@ export function LandingPage() {
       <section id="features" className="bg-gradient-to-b from-blue-50 to-white">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center rounded-full bg-gradient-to-r from-blue-100 to-emerald-100 px-6 py-3 text-sm font-bold text-emerald-700 ring-2 ring-emerald-200 shadow-lg">
+            <div className="inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200 shadow-sm">
               <span className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
                 Features
               </span>
             </div>
-            <h2 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+            <h2 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-[3rem]">
               Everything You Need to{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent bg-clip-text">Save Water</span>
+              <span className="bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">Save Water</span>
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
               Comprehensive tools to monitor, analyze, and reduce your household water consumption
               effectively.
             </p>
@@ -290,66 +295,42 @@ export function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-2">
             <div className="relative">
-              <div className="absolute -inset-6 rounded-[40px] bg-gradient-to-br from-brand-200/60 to-sky-200/20 blur-2xl" />
-              <div className="relative overflow-hidden rounded-2xl bg-white shadow-xl">
+              <div className="absolute -inset-6 rounded-[40px] bg-gradient-to-br from-brand-200/40 to-sky-100/20 blur-2xl" />
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-soft">
                 <img 
                   src="/virtualmeter.jpg" 
                   alt="Virtual Water Meter Display"
                   className="w-full h-auto object-cover"
                 />
                 
-                {/* Animated Info Cards Overlay */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
+                <div className="absolute left-4 top-4 rounded-xl border border-emerald-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <div className="h-4 w-4 rounded-full bg-emerald-500 animate-pulse shadow-lg"></div>
-                    <div className="text-sm font-bold text-white">Active</div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500"></div>
+                    <div className="text-sm font-semibold text-emerald-800">Live Monitoring</div>
                   </div>
                 </div>
                 
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
+                <div className="absolute right-4 top-4 rounded-xl border border-emerald-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <Droplet className="h-5 w-5 text-emerald-600 animate-bounce" />
-                    <div className="text-xl font-bold text-emerald-700">2.4 L/min</div>
-                  </div>
-                </div>
-                
-                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
-                  <div className="text-center">
-                    <div className="text-sm font-semibold text-emerald-700 mb-2">Daily Goal</div>
-                    <div className="text-2xl font-bold text-emerald-600">70%</div>
-                    <div className="text-xs text-emerald-600/80">84/120L</div>
-                  </div>
-                </div>
-                
-                <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
-                  <div className="flex items-center gap-3">
-                    <Activity className="h-5 w-5 text-emerald-600 animate-bounce" />
-                    <div className="text-sm font-semibold text-emerald-700">Optimal</div>
-                  </div>
-                </div>
-                
-                {/* Corner Status Card */}
-                <div className="absolute -top-2 -right-2 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full p-3 shadow-2xl animate-bounce">
-                  <div className="text-center">
-                    <Zap className="h-6 w-6 text-white mb-1" />
-                    <div className="text-xs font-bold text-white">Smart</div>
+                    <Droplet className="h-4 w-4 text-emerald-600" />
+                    <div className="text-sm font-semibold text-emerald-800">2.4 L/min</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div>
-              <div className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-100 to-green-100 px-6 py-3 text-sm font-bold text-emerald-700 ring-2 ring-emerald-200 shadow-lg">
+              <div className="inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200 shadow-sm">
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
                   Virtual Meter
                 </span>
               </div>
-              <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+              <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-[3rem]">
                 Real-Time Water{" "}
-                <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent bg-clip-text">Monitoring</span>
+                <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Monitoring</span>
               </h3>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
+              <p className="mt-4 text-base leading-8 text-slate-600">
                 Our virtual water meter gives you instant visibility into your household's water
                 usage. Track consumption patterns, identify waste, and take control of your water
                 footprint.
@@ -393,17 +374,17 @@ export function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
             <div>
-              <div className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-100 to-green-100 px-6 py-3 text-sm font-bold text-emerald-700 ring-2 ring-emerald-200 shadow-lg">
+              <div className="inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200 shadow-sm">
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
                   Conservation Tips
                 </span>
               </div>
-              <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+              <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-[3rem]">
                 Smart Ways to{" "}
-                <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent bg-clip-text">Save Water</span>
+                <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Save Water</span>
               </h3>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
+              <p className="mt-4 text-base leading-8 text-slate-600">
                 Small changes in daily habits can lead to significant water savings. Our
                 personalized tips help you reduce consumption without sacrificing comfort.
               </p>
@@ -438,41 +419,25 @@ export function LandingPage() {
               </div>
 
             <div className="relative">
-              <div className="absolute -inset-8 rounded-[48px] bg-gradient-to-br from-emerald-200/60 to-sky-200/20 blur-2xl" />
-              <div className="relative overflow-hidden rounded-2xl bg-white shadow-xl">
+              <div className="absolute -inset-8 rounded-[48px] bg-gradient-to-br from-emerald-200/45 to-sky-100/20 blur-2xl" />
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-soft">
                 <img 
                   src="/2.jpg" 
                   alt="Conservation Tips Display"
                   className="w-full h-auto object-cover"
                 />
                 
-                {/* Animated Info Cards Overlay */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
+                <div className="absolute left-4 top-4 rounded-xl border border-emerald-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <div className="h-4 w-4 rounded-full bg-emerald-500 animate-pulse shadow-lg"></div>
-                    <div className="text-sm font-bold text-white">Active</div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500"></div>
+                    <div className="text-sm font-semibold text-emerald-800">Tips Updated</div>
                   </div>
                 </div>
                 
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
+                <div className="absolute right-4 top-4 rounded-xl border border-emerald-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <Droplet className="h-5 w-5 text-emerald-600 animate-bounce" />
-                    <div className="text-xl font-bold text-emerald-700">15 Tips</div>
-                  </div>
-                </div>
-                
-                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
-                  <div className="text-center">
-                    <div className="text-sm font-semibold text-emerald-700 mb-2">Monthly</div>
-                    <div className="text-2xl font-bold text-emerald-600">250L</div>
-                    <div className="text-xs text-emerald-600/80">Saved</div>
-                  </div>
-                </div>
-                
-                <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-2xl border-2 border-emerald-200">
-                  <div className="flex items-center gap-3">
-                    <Activity className="h-5 w-5 text-emerald-600 animate-bounce" />
-                    <div className="text-sm font-semibold text-emerald-700">Efficient</div>
+                    <Droplet className="h-4 w-4 text-emerald-600" />
+                    <div className="text-sm font-semibold text-emerald-800">15 Practical Tips</div>
                   </div>
                 </div>
               </div>
@@ -488,16 +453,16 @@ export function LandingPage() {
         </div>
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 px-6 py-3 text-sm font-bold text-indigo-700 ring-2 ring-indigo-200 shadow-lg">
+            <div className="inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-bold text-indigo-700 ring-1 ring-indigo-200 shadow-sm">
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-indigo-600"></span>
                   Saving Plans
                 </span>
             </div>
-            <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-              Choose Your <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent bg-clip-text">Saving Plan</span>
+            <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-[3rem]">
+              Choose Your <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">Saving Plan</span>
             </h3>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
               Select the plan that fits your household needs and start saving water today.
             </p>
           </div>
@@ -557,16 +522,16 @@ export function LandingPage() {
       <section className="bg-gradient-to-b from-gray-50 to-white">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-100 to-pink-100 px-6 py-3 text-sm font-bold text-purple-700 ring-2 ring-purple-200 shadow-lg">
+            <div className="inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-bold text-brand-700 ring-1 ring-brand-200 shadow-sm">
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-purple-600"></span>
+                  <span className="h-2 w-2 rounded-full bg-brand-600"></span>
                   Testimonials
                 </span>
             </div>
-            <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-              Trusted by <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent bg-clip-text">Thousands</span> of Families
+            <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-[3rem]">
+              Trusted by <span className="bg-gradient-to-r from-brand-700 to-sky-600 bg-clip-text text-transparent">Thousands</span> of Families
             </h3>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
               See how households across the country are saving water and money with SmartWater.
             </p>
           </div>
@@ -610,50 +575,51 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative bg-gradient-to-br from-blue-50 to-sky-50">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <Card className="relative overflow-hidden p-10 sm:p-12 bg-white shadow-lg">
-            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-brand-200/60 to-sky-200/20 blur-2xl" />
-            <div className="absolute -left-24 -bottom-24 h-72 w-72 rounded-full bg-gradient-to-br from-sky-200/40 to-brand-200/10 blur-2xl" />
+      {!token ? (
+        <section className="relative bg-gradient-to-br from-blue-50 to-sky-50">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+            <Card className="relative overflow-hidden p-10 sm:p-12 bg-white shadow-lg">
+              <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-brand-200/60 to-sky-200/20 blur-2xl" />
+              <div className="absolute -left-24 -bottom-24 h-72 w-72 rounded-full bg-gradient-to-br from-sky-200/40 to-brand-200/10 blur-2xl" />
 
-            <div className="relative mx-auto max-w-3xl text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center">
-                <BrandLogo className="h-16 w-16" alt="" />
-              </div>
-              <h3 className="mt-5 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-                Ready to Start <span className="text-brand-700">Saving Water?</span>
-              </h3>
-              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-                Join thousands of households already conserving water and reducing their bills. Start
-                tracking your water usage today — it’s free to get started!
-              </p>
+              <div className="relative mx-auto max-w-3xl text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center">
+                  <BrandLogo className="h-16 w-16" alt="" />
+                </div>
+                <h3 className="mt-5 text-3xl font-black tracking-tight text-slate-900 sm:text-[2.6rem]">
+                  Ready to Start <span className="text-brand-700">Saving Water?</span>
+                </h3>
+                <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
+                  Join thousands of households already conserving water and reducing their bills. Start
+                  tracking your water usage today — it’s free to get started!
+                </p>
 
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Button size="lg">Get Started Free</Button>
-                <Button size="lg" variant="ghost">
-                  Contact Sales
-                </Button>
-              </div>
+                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                  <Button as={Link} to="/register" size="lg">Get Started Free</Button>
+                  <Button as={Link} to="/contact" size="lg" variant="ghost">
+                    Contact Us
+                  </Button>
+                </div>
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
-                <div className="inline-flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                  No credit card required
-                </div>
-                <div className="inline-flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-brand-600" />
-                  14-day trial
-                </div>
-                <div className="inline-flex items-center gap-2">
-                  <BadgePercent className="h-4 w-4 text-sky-600" />
-                  Cancel anytime
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
+                  <div className="inline-flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    No credit card required
+                  </div>
+                  <div className="inline-flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-brand-600" />
+                    14-day trial
+                  </div>
+                  <div className="inline-flex items-center gap-2">
+                    <BadgePercent className="h-4 w-4 text-sky-600" />
+                    Cancel anytime
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        </div>
-      </section>
+            </Card>
+          </div>
+        </section>
+      ) : null}
 
       <Footer />
     </div>

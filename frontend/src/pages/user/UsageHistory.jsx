@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { usageApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Search, ChevronLeft, ChevronRight, RefreshCw, Pencil, Trash2, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, RefreshCw, Pencil, Trash2, Eye, Droplets, Leaf, CalendarDays, TrendingUp, MoreHorizontal } from "lucide-react";
 
 const ACTIVITY_OPTIONS = [
   "",
@@ -38,6 +38,46 @@ const INPUT_MODES = {
   COUNT: "count",
 };
 
+const VALID_ACTIVITY_TYPES = new Set(ACTIVITY_OPTIONS.filter(Boolean));
+const VALID_SOURCES = new Set(SOURCE_OPTIONS.filter(Boolean));
+const MAX_NOTES_LENGTH = 500;
+const MAX_LITERS_VALUE = 100000;
+const MAX_DURATION_MINUTES = 1440;
+const MAX_FLOW_RATE_LPM = 200;
+const MAX_COUNT_VALUE = 10000;
+const MAX_LITERS_PER_UNIT = 10000;
+
+function sourceBadgeClass(source) {
+  const value = String(source || "manual").toLowerCase();
+  if (value === "preset") return "bg-indigo-100 text-indigo-800";
+  if (value === "imported") return "bg-amber-100 text-amber-800";
+  return "bg-emerald-100 text-emerald-800";
+}
+
+function SummaryCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  cardTone = "from-sky-50 to-cyan-50 border-sky-100",
+  iconTone = "bg-sky-100 text-sky-700",
+}) {
+  return (
+    <Card className={`border bg-gradient-to-br p-4 ${cardTone}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
+          <div className="mt-2 text-2xl font-black tracking-tight text-slate-900">{value}</div>
+          {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
+        </div>
+        <span className={`grid h-9 w-9 place-items-center rounded-xl ${iconTone}`}>
+          <Icon className="h-4.5 w-4.5" />
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 function formatDateInput(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -70,6 +110,30 @@ function defaultForm() {
     count: "",
     litersPerUnit: "",
   };
+}
+
+function currentDateTimeLocal() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function estimateFormLiters(form) {
+  if (form.inputMode === INPUT_MODES.DIRECT) {
+    const liters = Number(form.liters || 0);
+    return Number.isFinite(liters) ? liters : 0;
+  }
+
+  if (form.inputMode === INPUT_MODES.DURATION) {
+    const duration = Number(form.durationMinutes || 0);
+    const flow = Number(form.flowRateLpm || 0);
+    return Number.isFinite(duration * flow) ? duration * flow : 0;
+  }
+
+  const count = Number(form.count || 0);
+  const perUnit = Number(form.litersPerUnit || 0);
+  return Number.isFinite(count * perUnit) ? count * perUnit : 0;
 }
 
 function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) {
@@ -118,6 +182,7 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 type="datetime-local"
                 value={form.occurredAt}
                 onChange={(e) => setForm((f) => ({ ...f, occurredAt: e.target.value }))}
+                max={currentDateTimeLocal()}
                 className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
               />
             </div>
@@ -158,7 +223,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
               <label className="text-sm font-semibold text-slate-700">Liters</label>
               <input
                 type="number"
-                min="0"
+                min="0.01"
+                max={MAX_LITERS_VALUE}
                 step="0.01"
                 value={form.liters}
                 onChange={(e) => setForm((f) => ({ ...f, liters: e.target.value }))}
@@ -174,7 +240,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Duration (minutes)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={MAX_DURATION_MINUTES}
                   step="0.01"
                   value={form.durationMinutes}
                   onChange={(e) => setForm((f) => ({ ...f, durationMinutes: e.target.value }))}
@@ -186,7 +253,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Flow rate (L/min)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={MAX_FLOW_RATE_LPM}
                   step="0.01"
                   value={form.flowRateLpm}
                   onChange={(e) => setForm((f) => ({ ...f, flowRateLpm: e.target.value }))}
@@ -203,7 +271,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Count</label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
+                  max={MAX_COUNT_VALUE}
                   step="1"
                   value={form.count}
                   onChange={(e) => setForm((f) => ({ ...f, count: e.target.value }))}
@@ -215,7 +284,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Liters per unit</label>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={MAX_LITERS_PER_UNIT}
                   step="0.01"
                   value={form.litersPerUnit}
                   onChange={(e) => setForm((f) => ({ ...f, litersPerUnit: e.target.value }))}
@@ -232,9 +302,13 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={3}
+              maxLength={MAX_NOTES_LENGTH}
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               placeholder="Add context for this record"
             />
+            <div className="mt-1 text-right text-xs text-slate-500">
+              {form.notes.length}/{MAX_NOTES_LENGTH}
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -390,6 +464,11 @@ function buildPayloadFromUsageRecord(usage) {
 
 function validateUsageForm(form) {
   if (!form.activityType.trim()) return "Activity type is required.";
+  if (!VALID_ACTIVITY_TYPES.has(form.activityType.trim())) return "Please choose a valid activity type.";
+  if (!VALID_SOURCES.has(form.source)) return "Please choose a valid source.";
+  if (form.notes && form.notes.length > MAX_NOTES_LENGTH) {
+    return `Notes cannot exceed ${MAX_NOTES_LENGTH} characters.`;
+  }
 
   if (form.occurredAt) {
     const occurredAt = new Date(form.occurredAt);
@@ -397,21 +476,37 @@ function validateUsageForm(form) {
     if (occurredAt > new Date()) return "Occurred at cannot be in the future.";
   }
 
-  const isNonNegative = (value) => value !== "" && Number.isFinite(Number(value)) && Number(value) >= 0;
+  const isPositive = (value) => value !== "" && Number.isFinite(Number(value)) && Number(value) > 0;
 
   if (form.inputMode === INPUT_MODES.DIRECT) {
-    if (!isNonNegative(form.liters)) return "Liters must be a non-negative number.";
+    if (!isPositive(form.liters)) return "Liters must be greater than 0.";
+    if (Number(form.liters) > MAX_LITERS_VALUE) return `Liters cannot exceed ${MAX_LITERS_VALUE}.`;
   }
 
   if (form.inputMode === INPUT_MODES.DURATION) {
-    if (!isNonNegative(form.durationMinutes)) return "Duration must be a non-negative number.";
-    if (!isNonNegative(form.flowRateLpm)) return "Flow rate must be a non-negative number.";
+    if (!isPositive(form.durationMinutes)) return "Duration must be greater than 0.";
+    if (!isPositive(form.flowRateLpm)) return "Flow rate must be greater than 0.";
+    if (Number(form.durationMinutes) > MAX_DURATION_MINUTES) {
+      return `Duration cannot exceed ${MAX_DURATION_MINUTES} minutes.`;
+    }
+    if (Number(form.flowRateLpm) > MAX_FLOW_RATE_LPM) {
+      return `Flow rate cannot exceed ${MAX_FLOW_RATE_LPM} L/min.`;
+    }
   }
 
   if (form.inputMode === INPUT_MODES.COUNT) {
-    if (!isNonNegative(form.count)) return "Count must be a non-negative number.";
-    if (!isNonNegative(form.litersPerUnit)) return "Liters per unit must be a non-negative number.";
+    if (!isPositive(form.count)) return "Count must be greater than 0.";
+    if (!Number.isInteger(Number(form.count))) return "Count must be a whole number.";
+    if (Number(form.count) > MAX_COUNT_VALUE) return `Count cannot exceed ${MAX_COUNT_VALUE}.`;
+    if (!isPositive(form.litersPerUnit)) return "Liters per unit must be greater than 0.";
+    if (Number(form.litersPerUnit) > MAX_LITERS_PER_UNIT) {
+      return `Liters per unit cannot exceed ${MAX_LITERS_PER_UNIT}.`;
+    }
   }
+
+  const estimated = estimateFormLiters(form);
+  if (!Number.isFinite(estimated) || estimated <= 0) return "Estimated liters must be greater than 0.";
+  if (estimated > MAX_LITERS_VALUE) return `Estimated liters cannot exceed ${MAX_LITERS_VALUE}.`;
 
   return "";
 }
@@ -420,7 +515,7 @@ export function UsageHistory() {
   const { token } = useAuth();
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [activityType, setActivityType] = useState("");
   const [source, setSource] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -500,7 +595,7 @@ export function UsageHistory() {
 
   useEffect(() => {
     setPage(1);
-  }, [activityType, source, startDate, endDate, sort]);
+  }, [activityType, source, startDate, endDate, sort, limit]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -523,7 +618,67 @@ export function UsageHistory() {
     [visibleItems, selectedIds]
   );
 
+  const summary = useMemo(() => {
+    const totalLiters = visibleItems.reduce((sum, item) => sum + Number(item?.liters || 0), 0);
+    const totalCarbon = visibleItems.reduce((sum, item) => sum + Number(item?.carbonFootprint?.carbonKg || 0), 0);
+
+    const byDate = visibleItems.reduce((acc, item) => {
+      const key = item?.occurredAt ? new Date(item.occurredAt).toISOString().slice(0, 10) : "unknown";
+      acc[key] = (acc[key] || 0) + Number(item?.liters || 0);
+      return acc;
+    }, {});
+
+    const dayKeys = Object.keys(byDate).filter((k) => k !== "unknown");
+    const avgLitersPerDay = dayKeys.length ? totalLiters / dayKeys.length : 0;
+    const highestDayEntry = dayKeys
+      .map((date) => ({ date, liters: byDate[date] }))
+      .sort((a, b) => b.liters - a.liters)[0] || null;
+
+    return {
+      totalLiters,
+      totalCarbon,
+      avgLitersPerDay,
+      highestDayEntry,
+    };
+  }, [visibleItems]);
+
   const selectedVisibleCount = selectedVisibleItems.length;
+
+  const trendPoints = useMemo(() => {
+    const grouped = visibleItems.reduce((acc, item) => {
+      const key = item?.occurredAt ? new Date(item.occurredAt).toISOString().slice(0, 10) : "";
+      if (!key) return acc;
+      acc[key] = (acc[key] || 0) + Number(item?.liters || 0);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([date, liters]) => ({ date, liters: Number(liters) }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(-14);
+  }, [visibleItems]);
+
+  const rangeLabel = useMemo(() => {
+    if (!total) return "Showing 0 results";
+    const start = (page - 1) * limit + 1;
+    const end = Math.min(page * limit, total);
+    return `Showing ${start}-${end} of ${total} records`;
+  }, [page, limit, total]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    if (activityType) chips.push({ key: "activity", label: `Activity: ${activityType}` });
+    if (source) chips.push({ key: "source", label: `Source: ${source}` });
+    if (startDate || endDate) {
+      chips.push({ key: "date", label: `Date: ${startDate || "..."} -> ${endDate || "..."}` });
+    }
+    if (sort && sort !== "-occurredAt") {
+      const found = SORT_OPTIONS.find((x) => x.value === sort);
+      chips.push({ key: "sort", label: `Sort: ${found?.label || sort}` });
+    }
+    if (search.trim()) chips.push({ key: "search", label: `Search: ${search.trim()}` });
+    return chips;
+  }, [activityType, source, startDate, endDate, sort, search]);
 
   function clearFilters() {
     setActivityType("");
@@ -810,6 +965,41 @@ export function UsageHistory() {
         </Link>
       </div>
 
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          label="Total liters"
+          value={`${summary.totalLiters.toLocaleString(undefined, { maximumFractionDigits: 1 })} L`}
+          helper="Visible filtered records"
+          icon={Droplets}
+          cardTone="from-sky-50 to-cyan-50 border-sky-100"
+          iconTone="bg-sky-100 text-sky-700"
+        />
+        <SummaryCard
+          label="Total carbon"
+          value={`${summary.totalCarbon.toFixed(3)} kg`}
+          helper="Visible filtered records"
+          icon={Leaf}
+          cardTone="from-emerald-50 to-lime-50 border-emerald-100"
+          iconTone="bg-emerald-100 text-emerald-700"
+        />
+        <SummaryCard
+          label="Average per day"
+          value={`${summary.avgLitersPerDay.toLocaleString(undefined, { maximumFractionDigits: 1 })} L`}
+          helper="Across visible days"
+          icon={CalendarDays}
+          cardTone="from-amber-50 to-orange-50 border-amber-100"
+          iconTone="bg-amber-100 text-amber-700"
+        />
+        <SummaryCard
+          label="Highest day"
+          value={summary.highestDayEntry ? `${summary.highestDayEntry.liters.toLocaleString(undefined, { maximumFractionDigits: 1 })} L` : "-"}
+          helper={summary.highestDayEntry ? summary.highestDayEntry.date : "No data"}
+          icon={TrendingUp}
+          cardTone="from-slate-50 to-zinc-100 border-slate-200"
+          iconTone="bg-slate-200 text-slate-700"
+        />
+      </div>
+
       <Card className="mt-6 p-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <div>
@@ -926,6 +1116,26 @@ export function UsageHistory() {
             className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none ring-brand-300 focus:ring-2"
           />
         </div>
+
+        {activeFilterChips.length > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {activeFilterChips.map((chip) => (
+              <span key={chip.key} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                {chip.label}
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                clearFilters();
+                setSearch("");
+              }}
+              className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-100"
+            >
+              Clear all
+            </button>
+          </div>
+        ) : null}
       </Card>
 
       {error ? (
@@ -939,6 +1149,40 @@ export function UsageHistory() {
           {notice}
         </div>
       ) : null}
+
+      <Card className="mt-4 p-5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-extrabold text-slate-900">Daily liters trend</div>
+            <div className="text-xs text-slate-500">Last {trendPoints.length || 0} visible days</div>
+          </div>
+        </div>
+
+        {trendPoints.length === 0 ? (
+          <div className="mt-3 rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
+            No trend data for current filters.
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-10 md:grid-cols-14">
+            {trendPoints.map((point) => {
+              const max = Math.max(...trendPoints.map((p) => p.liters), 1);
+              const pct = Math.max((point.liters / max) * 100, 8);
+              return (
+                <div key={point.date} className="text-center">
+                  <div className="mx-auto flex h-24 w-6 items-end rounded-full bg-slate-100 p-1">
+                    <div
+                      className="w-full rounded-full bg-gradient-to-t from-cyan-500 to-sky-300"
+                      style={{ height: `${pct}%` }}
+                      title={`${point.date}: ${point.liters.toLocaleString()} L`}
+                    />
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-500">{point.date.slice(5)}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
 
       <div className="mt-4 flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -983,10 +1227,67 @@ export function UsageHistory() {
         </div>
       ) : null}
 
-      <Card className="mt-6 overflow-hidden p-0">
+      <Card className="mt-6 p-4 md:hidden">
+        <div className="space-y-3">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={`mobile-skeleton-${idx}`} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+            ))
+          ) : visibleItems.length === 0 ? (
+            <p className="text-sm text-slate-500">No usage records found.</p>
+          ) : (
+            visibleItems.map((item) => (
+              <div key={item._id} className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                    {item.activityType || "-"}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sourceBadgeClass(item.source)}`}>
+                    {item.source || "manual"}
+                  </span>
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  {item.occurredAt ? new Date(item.occurredAt).toLocaleString() : "-"}
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-800">
+                  {Number(item.liters || 0).toLocaleString()} L • {Number(item.carbonFootprint?.carbonKg || 0).toFixed(3)} kg
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openView(item)}
+                    className="rounded-lg p-2 text-brand-700 hover:bg-brand-50"
+                    title="View"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(item)}
+                    className="rounded-lg p-2 text-slate-700 hover:bg-slate-100"
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(item)}
+                    className="rounded-lg p-2 text-rose-700 hover:bg-rose-50"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+
+      <Card className="mt-6 hidden overflow-hidden p-0 md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-4 py-3">
                   <input
@@ -997,8 +1298,8 @@ export function UsageHistory() {
                   />
                 </th>
                 <th className="px-4 py-3">Activity</th>
-                <th className="px-4 py-3">Liters</th>
-                <th className="px-4 py-3">Carbon (kg)</th>
+                <th className="px-4 py-3 text-right">Liters</th>
+                <th className="px-4 py-3 text-right">Carbon (kg)</th>
                 <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Occurred at</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -1006,11 +1307,13 @@ export function UsageHistory() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                    Loading usage records...
-                  </td>
-                </tr>
+                Array.from({ length: limit }).map((_, idx) => (
+                  <tr key={`usage-skeleton-${idx}`}>
+                    <td colSpan={7} className="px-4 py-3">
+                      <div className="h-6 animate-pulse rounded bg-slate-100" />
+                    </td>
+                  </tr>
+                ))
               ) : visibleItems.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
@@ -1018,8 +1321,8 @@ export function UsageHistory() {
                   </td>
                 </tr>
               ) : (
-                visibleItems.map((item) => (
-                  <tr key={item._id} className="hover:bg-slate-50/80">
+                visibleItems.map((item, idx) => (
+                  <tr key={item._id} className={idx % 2 === 0 ? "hover:bg-slate-50/80" : "bg-slate-50/30 hover:bg-slate-50/80"}>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -1028,10 +1331,18 @@ export function UsageHistory() {
                         aria-label={`Select ${item.activityType || "usage"}`}
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{item.activityType || "-"}</td>
-                    <td className="px-4 py-3">{Number(item.liters || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3">{Number(item.carbonFootprint?.carbonKg || 0).toFixed(3)}</td>
-                    <td className="px-4 py-3 capitalize text-slate-700">{item.source || "manual"}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                        {item.activityType || "-"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">{Number(item.liters || 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">{Number(item.carbonFootprint?.carbonKg || 0).toFixed(3)}</td>
+                    <td className="px-4 py-3 capitalize text-slate-700">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sourceBadgeClass(item.source)}`}>
+                        {item.source || "manual"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-slate-700">
                       {item.occurredAt ? new Date(item.occurredAt).toLocaleString() : "-"}
                     </td>
@@ -1040,24 +1351,30 @@ export function UsageHistory() {
                         <button
                           type="button"
                           onClick={() => openView(item)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                          className="rounded-lg p-2 text-brand-700 hover:bg-brand-50"
+                          title="View details"
                         >
-                          <Eye className="h-3.5 w-3.5" /> View
+                          <Eye className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => openEdit(item)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                          className="rounded-lg p-2 text-slate-700 hover:bg-slate-100"
+                          title="Edit"
                         >
-                          <Pencil className="h-3.5 w-3.5" /> Edit
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => onDelete(item)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                          className="rounded-lg p-2 text-rose-700 hover:bg-rose-50"
+                          title="Delete"
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
+                        <span className="inline-flex items-center px-1 text-slate-300">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -1069,11 +1386,19 @@ export function UsageHistory() {
       </Card>
 
       <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
-        <p className="text-sm text-slate-600">
-          Page {page} of {totalPages || 1} - {total} total records
-        </p>
+        <p className="text-sm text-slate-600">{rangeLabel}</p>
 
         <div className="flex items-center gap-2">
+          <select
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+          >
+            <option value={10}>10 / page</option>
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
+
           <Button
             type="button"
             variant="ghost"
