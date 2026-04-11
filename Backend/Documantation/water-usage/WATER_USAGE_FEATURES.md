@@ -210,11 +210,15 @@ GET /usage
 Authorization: Bearer {token}
 
 Optional Query Parameters:
-- userId: Filter by user
 - activityType: Filter by activity
-- householdId: Filter by household
 - startDate: Date range start
 - endDate: Date range end
+- source: Filter by source (manual/preset/imported)
+- page: Pagination page (default 1)
+- limit: Items per page (default 20, max 100)
+- sort: Sort field (e.g., -occurredAt, liters)
+
+Note: For normal users, records are automatically scoped to the authenticated user's household.
 
 Response: 200 OK
 {

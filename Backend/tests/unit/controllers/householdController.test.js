@@ -16,12 +16,16 @@ jest.mock("../../../utils/estimateUsage", () => jest.fn());
 jest.mock("../../../utils/householdEmail", () => ({
   sendHouseholdEstimate: jest.fn(),
 }));
+jest.mock("../../../services/billRecommendationService", () => ({
+  getBillRecommendationsForHousehold: jest.fn(),
+}));
 
 const Household = require("../../../models/householdModel");
 const Zone = require("../../../models/zoneModel");
 const User = require("../../../models/userModel");
 const estimateUsage = require("../../../utils/estimateUsage");
 const { sendHouseholdEstimate } = require("../../../utils/householdEmail");
+const { getBillRecommendationsForHousehold } = require("../../../services/billRecommendationService");
 const householdController = require("../../../controllers/householdController");
 
 function createMockRes() {
@@ -60,6 +64,9 @@ describe("householdController unit", () => {
         monthlyUnits: 9,
         zone: "Intermediate",
       });
+      getBillRecommendationsForHousehold.mockResolvedValue({
+        recommendations: ["Fix leaks promptly", "Use a bucket for car washing"],
+      });
 
       const saveMock = jest.fn().mockResolvedValue();
       Household.mockImplementation((data) => ({
@@ -95,7 +102,7 @@ describe("householdController unit", () => {
 
   describe("getMyHouseholds", () => {
     it("returns households for logged-in user", async () => {
-      const items = [{ _id: "h1", name: "My Home" }];
+      const items = [{ _id: "h1", name: "My Home", billRecommendations: ["Already filled"] }];
       Household.find.mockResolvedValue(items);
 
       const req = { user: { id: "u1" } };

@@ -21,6 +21,6 @@ scenarios:
       - get:
           url: "/usage"
       - get:
-          url: "/usage/carbon-leaderboard"
+          url: "/usage/carbon-trend?days=7"
       - get:
           url: "/usage/carbon-stats"

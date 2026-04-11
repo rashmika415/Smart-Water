@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
 html,
 body {
   height: 100%;
@@ -14,14 +16,24 @@ body {
 
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter,
-    Arial, sans-serif;
+  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
   background: radial-gradient(1200px 700px at 20% 10%, rgba(34, 211, 238, 0.22), transparent 60%),
     radial-gradient(900px 500px at 90% 15%, rgba(59, 130, 246, 0.18), transparent 55%),
     linear-gradient(180deg, #e9fbff 0%, #ffffff 55%, #ffffff 100%);
   overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
 * {
@@ -37,4 +49,71 @@ canvas {
 
 :root {
   color-scheme: light;
+}
+
+@keyframes ca-reveal-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ca-reveal-up {
+  animation: ca-reveal-up 440ms ease-out both;
+}
+
+.ca-pop {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.ca-pop:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+@keyframes public-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.public-reveal {
+  animation: public-fade-up 520ms ease-out both;
+}
+
+.public-card-hover {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.public-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ca-reveal-up {
+    animation: none;
+  }
+
+  .public-reveal {
+    animation: none;
+  }
+
+  .ca-pop,
+  .ca-pop:hover,
+  .public-card-hover,
+  .public-card-hover:hover {
+    transition: none;
+    transform: none;
+    box-shadow: none;
+  }
 }
