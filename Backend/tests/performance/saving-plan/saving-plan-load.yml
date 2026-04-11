@@ -31,6 +31,9 @@ scenarios:
             householdSize: 4
             priorityArea: "Bathroom"
             waterSource: "Municipal"
+          capture:
+            - json: "$._id"
+              as: "planId"
       - put:
           url: "/saving-plan/{{ planId }}"
           json:
@@ -39,8 +42,16 @@ scenarios:
   - name: saving_plan_update_flow
     weight: 20
     flow:
-      - get:
+      - post:
           url: "/saving-plan"
+          json:
+            planType: "Basic"
+            householdSize: 4
+            priorityArea: "Bathroom"
+            waterSource: "Municipal"
+          capture:
+            - json: "$._id"
+              as: "planId"
       - put:
           url: "/saving-plan/{{ planId }}"
           json:

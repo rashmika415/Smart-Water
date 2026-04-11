@@ -27,6 +27,9 @@ scenarios:
             householdSize: 3
             priorityArea: "Kitchen"
             waterSource: "Well"
+          capture:
+            - json: "$._id"
+              as: "planId"
       - get:
           url: "/saving-plan/calculation"
       - put:
