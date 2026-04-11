@@ -926,3 +926,593 @@ exports.getDailyWaterUsage = async (req, res) => {
 		});
 	}
 };
+
+function getAdminDateRange(query = {}) {
+	const { startDate, endDate, days = 30 } = query;
+	const end = endDate ? new Date(endDate) : new Date();
+	if (Number.isNaN(end.getTime())) {
+		return null;
+	}
+
+	let start;
+	if (startDate) {
+		start = new Date(startDate);
+		if (Number.isNaN(start.getTime())) {
+			return null;
+		}
+	} else {
+		const parsedDays = Math.max(1, parseInt(days, 10) || 30);
+		start = new Date(end.getTime() - parsedDays * 24 * 60 * 60 * 1000);
+	}
+
+	if (start > end) {
+		return null;
+	}
+
+	return { start, end };
+}
+
+/**
+ * Admin: Get platform-wide water usage overview
+ * @route GET /usage/admin/overview
+ */
+exports.getAdminUsageOverview = async (req, res) => {
+	try {
+		const range = getAdminDateRange(req.query);
+		if (!range) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid date range. Use valid startDate/endDate or days.",
+			});
+		}
+
+		const { start, end } = range;
+
+		const [overall] = await Usage.aggregate([
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+				},
+			},
+			{
+				$group: {
+					_id: null,
+					totalLiters: { $sum: "$liters" },
+					totalCarbonKg: { $sum: "$carbonFootprint.carbonKg" },
+					totalEnergyKwh: { $sum: "$carbonFootprint.energyKwh" },
+					usageCount: { $sum: 1 },
+					activeHouseholds: { $addToSet: "$householdId" },
+				},
+			},
+			{
+				$project: {
+					_id: 0,
+					totalLiters: 1,
+					totalCarbonKg: 1,
+					totalEnergyKwh: 1,
+					usageCount: 1,
+					activeHouseholds: { $size: "$activeHouseholds" },
+				},
+			},
+		]);
+
+		const topActivities = await Usage.aggregate([
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+				},
+			},
+			{
+				$group: {
+					_id: "$activityType",
+					totalLiters: { $sum: "$liters" },
+					totalCarbonKg: { $sum: "$carbonFootprint.carbonKg" },
+					usageCount: { $sum: 1 },
+				},
+			},
+			{ $sort: { totalLiters: -1 } },
+			{ $limit: 6 },
+			{
+				$project: {
+					_id: 0,
+					activityType: "$_id",
+					totalLiters: { $round: ["$totalLiters", 0] },
+					totalCarbonKg: { $round: ["$totalCarbonKg", 3] },
+					usageCount: 1,
+				},
+			},
+		]);
+
+		const trend = await Usage.aggregate([
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+				},
+			},
+			{
+				$group: {
+					_id: {
+						year: { $year: "$occurredAt" },
+						month: { $month: "$occurredAt" },
+						day: { $dayOfMonth: "$occurredAt" },
+					},
+					date: { $first: "$occurredAt" },
+					totalLiters: { $sum: "$liters" },
+					totalCarbonKg: { $sum: "$carbonFootprint.carbonKg" },
+					usageCount: { $sum: 1 },
+				},
+			},
+			{ $sort: { date: 1 } },
+			{
+				$project: {
+					_id: 0,
+					date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+					totalLiters: { $round: ["$totalLiters", 0] },
+					totalCarbonKg: { $round: ["$totalCarbonKg", 3] },
+					usageCount: 1,
+				},
+			},
+		]);
+
+		const totals = overall || {
+			totalLiters: 0,
+			totalCarbonKg: 0,
+			totalEnergyKwh: 0,
+			usageCount: 0,
+			activeHouseholds: 0,
+		};
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				period: {
+					startDate: start,
+					endDate: end,
+					days: Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))),
+				},
+				totals: {
+					totalLiters: Math.round(totals.totalLiters || 0),
+					totalCarbonKg: parseFloat((totals.totalCarbonKg || 0).toFixed(3)),
+					totalEnergyKwh: parseFloat((totals.totalEnergyKwh || 0).toFixed(2)),
+					usageCount: totals.usageCount || 0,
+					activeHouseholds: totals.activeHouseholds || 0,
+					avgLitersPerRecord:
+						totals.usageCount > 0
+							? Math.round((totals.totalLiters || 0) / totals.usageCount)
+							: 0,
+				},
+				topActivities,
+				trend,
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching admin usage overview:", error);
+		return res.status(500).json({
+			success: false,
+			message: "Error fetching admin usage overview",
+			error: error.message,
+		});
+	}
+};
+
+/**
+ * Admin: Get usage analytics grouped by household (paginated)
+ * @route GET /usage/admin/households
+ */
+exports.getAdminUsageByHouseholds = async (req, res) => {
+	try {
+		const range = getAdminDateRange(req.query);
+		if (!range) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid date range. Use valid startDate/endDate or days.",
+			});
+		}
+
+		const { start, end } = range;
+		const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+		const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+		const skip = (page - 1) * limit;
+		const search = String(req.query.search || "").trim();
+
+		const sortParam = String(req.query.sort || "-totalLiters");
+		const sortOrder = sortParam.startsWith("-") ? -1 : 1;
+		const sortField = sortParam.replace(/^-/, "");
+		const allowedSortFields = [
+			"totalLiters",
+			"totalCarbonKg",
+			"usageCount",
+			"latestUsageAt",
+			"householdName",
+			"avgLitersPerRecord",
+		];
+		const normalizedSortField = allowedSortFields.includes(sortField)
+			? sortField
+			: "totalLiters";
+		const sortStage = { [normalizedSortField]: sortOrder, householdName: 1 };
+
+		const pipeline = [
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+				},
+			},
+			{
+				$group: {
+					_id: "$householdId",
+					totalLiters: { $sum: "$liters" },
+					totalCarbonKg: { $sum: "$carbonFootprint.carbonKg" },
+					totalEnergyKwh: { $sum: "$carbonFootprint.energyKwh" },
+					usageCount: { $sum: 1 },
+					latestUsageAt: { $max: "$occurredAt" },
+				},
+			},
+			{
+				$lookup: {
+					from: "households",
+					localField: "_id",
+					foreignField: "_id",
+					as: "household",
+				},
+			},
+			{ $unwind: "$household" },
+			{
+				$project: {
+					_id: 0,
+					householdId: "$_id",
+					householdName: "$household.name",
+					city: "$household.location.city",
+					residents: "$household.numberOfResidents",
+					totalLiters: { $round: ["$totalLiters", 0] },
+					totalCarbonKg: { $round: ["$totalCarbonKg", 3] },
+					totalEnergyKwh: { $round: ["$totalEnergyKwh", 2] },
+					usageCount: 1,
+					latestUsageAt: 1,
+					avgLitersPerRecord: {
+						$round: [{ $divide: ["$totalLiters", "$usageCount"] }, 1],
+					},
+					litersPerResident: {
+						$round: [
+							{
+								$cond: [
+									{ $gt: ["$household.numberOfResidents", 0] },
+									{ $divide: ["$totalLiters", "$household.numberOfResidents"] },
+									0,
+								],
+							},
+							1,
+						],
+					},
+				},
+			},
+		];
+
+		if (search) {
+			pipeline.push({
+				$match: {
+					$or: [
+						{ householdName: { $regex: search, $options: "i" } },
+						{ city: { $regex: search, $options: "i" } },
+					],
+				},
+			});
+		}
+
+		pipeline.push(
+			{ $sort: sortStage },
+			{
+				$facet: {
+					rows: [{ $skip: skip }, { $limit: limit }],
+					meta: [{ $count: "total" }],
+				},
+			}
+		);
+
+		const [result] = await Usage.aggregate(pipeline);
+		const rows = result?.rows || [];
+		const total = result?.meta?.[0]?.total || 0;
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				period: {
+					startDate: start,
+					endDate: end,
+				},
+				page,
+				limit,
+				total,
+				totalPages: Math.ceil(total / limit),
+				rows,
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching admin household usage analytics:", error);
+		return res.status(500).json({
+			success: false,
+			message: "Error fetching admin household usage analytics",
+			error: error.message,
+		});
+	}
+};
+
+/**
+ * Admin: Get detailed usage records for one household
+ * @route GET /usage/admin/households/:householdId
+ */
+exports.getAdminHouseholdUsageDetails = async (req, res) => {
+	try {
+		const { householdId } = req.params;
+		if (!mongoose.Types.ObjectId.isValid(householdId)) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid householdId format",
+			});
+		}
+
+		const range = getAdminDateRange(req.query);
+		if (!range) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid date range. Use valid startDate/endDate or days.",
+			});
+		}
+
+		const { start, end } = range;
+		const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+		const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+		const skip = (page - 1) * limit;
+		const sort = getSortParams(req.query.sort || "-occurredAt");
+
+		const household = await Household.findById(householdId)
+			.select("name numberOfResidents location")
+			.lean();
+
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "Household not found",
+			});
+		}
+
+		const filter = {
+			householdId,
+			deletedAt: null,
+			occurredAt: { $gte: start, $lte: end },
+		};
+
+		if (req.query.activityType) {
+			filter.activityType = req.query.activityType;
+		}
+
+		const [records, total, summaryAgg] = await Promise.all([
+			Usage.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+			Usage.countDocuments(filter),
+			Usage.aggregate([
+				{ $match: filter },
+				{
+					$group: {
+						_id: null,
+						totalLiters: { $sum: "$liters" },
+						totalCarbonKg: { $sum: "$carbonFootprint.carbonKg" },
+						totalEnergyKwh: { $sum: "$carbonFootprint.energyKwh" },
+						usageCount: { $sum: 1 },
+					},
+				},
+			]),
+		]);
+
+		const summary = summaryAgg[0] || {
+			totalLiters: 0,
+			totalCarbonKg: 0,
+			totalEnergyKwh: 0,
+			usageCount: 0,
+		};
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				household: {
+					householdId,
+					name: household.name,
+					residents: household.numberOfResidents,
+					city: household.location?.city || "",
+				},
+				period: {
+					startDate: start,
+					endDate: end,
+				},
+				summary: {
+					totalLiters: Math.round(summary.totalLiters || 0),
+					totalCarbonKg: parseFloat((summary.totalCarbonKg || 0).toFixed(3)),
+					totalEnergyKwh: parseFloat((summary.totalEnergyKwh || 0).toFixed(2)),
+					usageCount: summary.usageCount || 0,
+				},
+				page,
+				limit,
+				total,
+				totalPages: Math.ceil(total / limit),
+				records,
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching admin household usage details:", error);
+		return res.status(500).json({
+			success: false,
+			message: "Error fetching admin household usage details",
+			error: error.message,
+		});
+	}
+};
+
+/**
+ * Admin: Detect anomalous usage patterns that may indicate leaks/spikes
+ * @route GET /usage/admin/anomalies
+ */
+exports.getAdminUsageAnomalies = async (req, res) => {
+	try {
+		const range = getAdminDateRange(req.query);
+		if (!range) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid date range. Use valid startDate/endDate or days.",
+			});
+		}
+
+		const { start, end } = range;
+		const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+
+		const [globalStats] = await Usage.aggregate([
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+				},
+			},
+			{
+				$group: {
+					_id: null,
+					avgLitersPerRecord: { $avg: "$liters" },
+					totalRecords: { $sum: 1 },
+				},
+			},
+		]);
+
+		const avgLitersPerRecord = globalStats?.avgLitersPerRecord || 0;
+		const spikeThreshold = avgLitersPerRecord > 0 ? avgLitersPerRecord * 3 : 600;
+
+		const suspiciousHouseholds = await Usage.aggregate([
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+				},
+			},
+			{
+				$group: {
+					_id: "$householdId",
+					totalLiters: { $sum: "$liters" },
+					usageCount: { $sum: 1 },
+					maxSingleRecordLiters: { $max: "$liters" },
+					latestUsageAt: { $max: "$occurredAt" },
+				},
+			},
+			{
+				$lookup: {
+					from: "households",
+					localField: "_id",
+					foreignField: "_id",
+					as: "household",
+				},
+			},
+			{ $unwind: "$household" },
+			{
+				$project: {
+					_id: 0,
+					householdId: "$_id",
+					householdName: "$household.name",
+					city: "$household.location.city",
+					residents: "$household.numberOfResidents",
+					totalLiters: { $round: ["$totalLiters", 0] },
+					usageCount: 1,
+					maxSingleRecordLiters: { $round: ["$maxSingleRecordLiters", 0] },
+					avgLitersPerRecord: {
+						$round: [{ $divide: ["$totalLiters", "$usageCount"] }, 1],
+					},
+					litersPerResident: {
+						$round: [
+							{
+								$cond: [
+									{ $gt: ["$household.numberOfResidents", 0] },
+									{ $divide: ["$totalLiters", "$household.numberOfResidents"] },
+									0,
+								],
+							},
+							1,
+						],
+					},
+					latestUsageAt: 1,
+				},
+			},
+			{
+				$addFields: {
+					isAnomaly: {
+						$or: [
+							{ $gte: ["$avgLitersPerRecord", avgLitersPerRecord * 1.8] },
+							{ $gte: ["$maxSingleRecordLiters", spikeThreshold] },
+							{ $gte: ["$litersPerResident", days * 300] },
+						],
+					},
+				},
+			},
+			{ $match: { isAnomaly: true } },
+			{ $sort: { maxSingleRecordLiters: -1, avgLitersPerRecord: -1 } },
+			{ $limit: 12 },
+		]);
+
+		const spikeRecords = await Usage.aggregate([
+			{
+				$match: {
+					deletedAt: null,
+					occurredAt: { $gte: start, $lte: end },
+					liters: { $gte: spikeThreshold },
+				},
+			},
+			{ $sort: { liters: -1, occurredAt: -1 } },
+			{ $limit: 15 },
+			{
+				$lookup: {
+					from: "households",
+					localField: "householdId",
+					foreignField: "_id",
+					as: "household",
+				},
+			},
+			{ $unwind: { path: "$household", preserveNullAndEmptyArrays: true } },
+			{
+				$project: {
+					_id: 0,
+					usageId: "$_id",
+					householdId: "$householdId",
+					householdName: "$household.name",
+					activityType: 1,
+					liters: { $round: ["$liters", 0] },
+					occurredAt: 1,
+					carbonKg: { $round: ["$carbonFootprint.carbonKg", 3] },
+				},
+			},
+		]);
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				period: {
+					startDate: start,
+					endDate: end,
+					days,
+				},
+				thresholds: {
+					avgLitersPerRecord: parseFloat(avgLitersPerRecord.toFixed(2)),
+					spikeLitersThreshold: Math.round(spikeThreshold),
+				},
+				summary: {
+					suspiciousHouseholdCount: suspiciousHouseholds.length,
+					spikeRecordCount: spikeRecords.length,
+				},
+				suspiciousHouseholds,
+				spikeRecords,
+			},
+		});
+	} catch (error) {
+		console.error("Error detecting usage anomalies:", error);
+		return res.status(500).json({
+			success: false,
+			message: "Error detecting usage anomalies",
+			error: error.message,
+		});
+	}
+};

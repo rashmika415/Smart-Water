@@ -323,6 +323,77 @@ export const usageApi = {
       token,
     });
   },
+  adminOverview: async (token, { startDate = "", endDate = "", days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/overview?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminHouseholds: async (
+    token,
+    {
+      page = 1,
+      limit = 10,
+      search = "",
+      startDate = "",
+      endDate = "",
+      days = 30,
+      sort = "-totalLiters",
+    } = {}
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      days: String(days),
+      sort,
+    });
+    if (search) q.set("search", search);
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/households?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminHouseholdDetails: async (
+    token,
+    householdId,
+    {
+      page = 1,
+      limit = 20,
+      activityType = "",
+      startDate = "",
+      endDate = "",
+      days = 30,
+      sort = "-occurredAt",
+    } = {}
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      days: String(days),
+      sort,
+    });
+    if (activityType) q.set("activityType", activityType);
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/households/${householdId}?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
+  adminAnomalies: async (token, { startDate = "", endDate = "", days = 30 } = {}) => {
+    const q = new URLSearchParams({ days: String(days) });
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    return apiFetch(`/usage/admin/anomalies?${q.toString()}`, {
+      method: "GET",
+      token,
+    });
+  },
 };
 
 

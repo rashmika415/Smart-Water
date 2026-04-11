@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { usageApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Droplets, BarChart3, Filter, X, Waves, Timer, Hash } from "lucide-react";
 
 const CUSTOM_PRESETS_STORAGE_KEY = "smartwater.customUsagePresets";
 const WEEKLY_GOALS_STORAGE_KEY = "smartwater.weeklyGoals";
@@ -39,6 +39,16 @@ const INPUT_MODES = {
   DURATION: "duration",
   COUNT: "count",
 };
+
+const VALID_ACTIVITY_TYPES = new Set(ACTIVITY_OPTIONS.filter(Boolean));
+const VALID_SOURCES = new Set(SOURCE_OPTIONS.filter(Boolean));
+const MAX_NOTES_LENGTH = 500;
+const MAX_LITERS_VALUE = 100000;
+const MAX_DURATION_MINUTES = 1440;
+const MAX_FLOW_RATE_LPM = 200;
+const MAX_COUNT_VALUE = 10000;
+const MAX_LITERS_PER_UNIT = 10000;
+const MIN_OCCURRED_AT_ISO = "2020-01-01T00:00";
 
 const QUICK_PRESETS = [
   {
@@ -143,6 +153,13 @@ function defaultForm() {
   };
 }
 
+function currentDateTimeLocal() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
 function buildUsagePayload(form) {
   const payload = {
     activityType: form.activityType.trim(),
@@ -165,35 +182,132 @@ function buildUsagePayload(form) {
   return payload;
 }
 
+function estimateFormLiters(form) {
+  if (form.inputMode === INPUT_MODES.DIRECT) {
+    const liters = Number(form.liters || 0);
+    return Number.isFinite(liters) ? liters : 0;
+  }
+
+  if (form.inputMode === INPUT_MODES.DURATION) {
+    const duration = Number(form.durationMinutes || 0);
+    const flow = Number(form.flowRateLpm || 0);
+    return Number.isFinite(duration * flow) ? duration * flow : 0;
+  }
+
+  const count = Number(form.count || 0);
+  const perUnit = Number(form.litersPerUnit || 0);
+  return Number.isFinite(count * perUnit) ? count * perUnit : 0;
+}
+
+function getPresetVisual(preset) {
+  if (preset.inputMode === INPUT_MODES.DURATION) {
+    return { icon: Timer, tone: "bg-sky-100 text-sky-700" };
+  }
+  if (preset.inputMode === INPUT_MODES.COUNT) {
+    return { icon: Hash, tone: "bg-violet-100 text-violet-700" };
+  }
+  return { icon: Waves, tone: "bg-emerald-100 text-emerald-700" };
+}
+
+function getSourceTheme(source) {
+  const value = String(source || "manual").toLowerCase();
+  if (value === "preset") return "bg-indigo-100 text-indigo-800";
+  if (value === "imported") return "bg-amber-100 text-amber-800";
+  return "bg-emerald-100 text-emerald-800";
+}
+
+function formatDateGroupLabel(dateValue) {
+  const now = new Date();
+  const target = new Date(dateValue);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  const dayDiff = Math.floor((startOfToday - startOfTarget) / (24 * 60 * 60 * 1000));
+
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  return "Earlier";
+}
+
+function SummaryMetric({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  cardTone = "from-sky-50 to-cyan-50 border-sky-100",
+  iconTone = "bg-sky-100 text-sky-700",
+}) {
+  return (
+    <Card className={`border bg-gradient-to-br p-4 ${cardTone}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
+          <div className="mt-2 text-2xl font-black tracking-tight text-slate-900">{value}</div>
+          {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
+        </div>
+        <span className={`grid h-9 w-9 place-items-center rounded-xl ${iconTone}`}>
+          <Icon className="h-4.5 w-4.5" />
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 function validateUsageForm(form) {
   if (!form.activityType.trim()) return "Activity type is required.";
+  if (!VALID_ACTIVITY_TYPES.has(form.activityType.trim())) return "Please choose a valid activity type.";
+  if (!VALID_SOURCES.has(form.source)) return "Please choose a valid source.";
+  if (form.notes && form.notes.length > MAX_NOTES_LENGTH) {
+    return `Notes cannot exceed ${MAX_NOTES_LENGTH} characters.`;
+  }
 
   if (form.occurredAt) {
     const occurredAt = new Date(form.occurredAt);
     if (Number.isNaN(occurredAt.getTime())) return "Occurred at must be a valid date and time.";
+    const minDate = new Date(MIN_OCCURRED_AT_ISO);
+    if (occurredAt < minDate) {
+      return "Occurred at cannot be earlier than Jan 1, 2020.";
+    }
     if (occurredAt > new Date()) return "Occurred at cannot be in the future.";
   }
 
-  const isNonNegative = (value) => value !== "" && Number.isFinite(Number(value)) && Number(value) >= 0;
+  const isPositive = (value) => value !== "" && Number.isFinite(Number(value)) && Number(value) > 0;
 
   if (form.inputMode === INPUT_MODES.DIRECT) {
-    if (!isNonNegative(form.liters)) return "Liters must be a non-negative number.";
+    if (!isPositive(form.liters)) return "Liters must be greater than 0.";
+    if (Number(form.liters) > MAX_LITERS_VALUE) return `Liters cannot exceed ${MAX_LITERS_VALUE}.`;
   }
 
   if (form.inputMode === INPUT_MODES.DURATION) {
-    if (!isNonNegative(form.durationMinutes)) return "Duration must be a non-negative number.";
-    if (!isNonNegative(form.flowRateLpm)) return "Flow rate must be a non-negative number.";
+    if (!isPositive(form.durationMinutes)) return "Duration must be greater than 0.";
+    if (!isPositive(form.flowRateLpm)) return "Flow rate must be greater than 0.";
+    if (Number(form.durationMinutes) > MAX_DURATION_MINUTES) {
+      return `Duration cannot exceed ${MAX_DURATION_MINUTES} minutes.`;
+    }
+    if (Number(form.flowRateLpm) > MAX_FLOW_RATE_LPM) {
+      return `Flow rate cannot exceed ${MAX_FLOW_RATE_LPM} L/min.`;
+    }
   }
 
   if (form.inputMode === INPUT_MODES.COUNT) {
-    if (!isNonNegative(form.count)) return "Count must be a non-negative number.";
-    if (!isNonNegative(form.litersPerUnit)) return "Liters per unit must be a non-negative number.";
+    if (!isPositive(form.count)) return "Count must be greater than 0.";
+    if (!Number.isInteger(Number(form.count))) return "Count must be a whole number.";
+    if (Number(form.count) > MAX_COUNT_VALUE) return `Count cannot exceed ${MAX_COUNT_VALUE}.`;
+    if (!isPositive(form.litersPerUnit)) return "Liters per unit must be greater than 0.";
+    if (Number(form.litersPerUnit) > MAX_LITERS_PER_UNIT) {
+      return `Liters per unit cannot exceed ${MAX_LITERS_PER_UNIT}.`;
+    }
   }
+
+  const estimated = estimateFormLiters(form);
+  if (!Number.isFinite(estimated) || estimated <= 0) return "Estimated liters must be greater than 0.";
+  if (estimated > MAX_LITERS_VALUE) return `Estimated liters cannot exceed ${MAX_LITERS_VALUE}.`;
 
   return "";
 }
 
 function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) {
+  const estimatedLiters = useMemo(() => estimateFormLiters(form), [form]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl ring-1 ring-slate-200">
@@ -214,6 +328,14 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
               {error}
             </div>
           ) : null}
+
+          <div className="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Estimated liters</div>
+            <div className="mt-1 text-lg font-black text-slate-900">
+              {estimatedLiters.toLocaleString(undefined, { maximumFractionDigits: 2 })} L
+            </div>
+            <div className="mt-0.5 text-xs text-slate-500">Updates automatically based on your selected input mode.</div>
+          </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <div>
@@ -239,8 +361,11 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 type="datetime-local"
                 value={form.occurredAt}
                 onChange={(e) => setForm((f) => ({ ...f, occurredAt: e.target.value }))}
+                min={MIN_OCCURRED_AT_ISO}
+                max={currentDateTimeLocal()}
                 className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
               />
+              <div className="mt-1 text-xs text-slate-500">Allowed range: Jan 1, 2020 to current date/time.</div>
             </div>
           </div>
 
@@ -279,7 +404,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
               <label className="text-sm font-semibold text-slate-700">Liters</label>
               <input
                 type="number"
-                min="0"
+                min="0.01"
+                max={MAX_LITERS_VALUE}
                 step="0.01"
                 value={form.liters}
                 onChange={(e) => setForm((f) => ({ ...f, liters: e.target.value }))}
@@ -295,7 +421,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Duration (minutes)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={MAX_DURATION_MINUTES}
                   step="0.01"
                   value={form.durationMinutes}
                   onChange={(e) => setForm((f) => ({ ...f, durationMinutes: e.target.value }))}
@@ -307,7 +434,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Flow rate (L/min)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={MAX_FLOW_RATE_LPM}
                   step="0.01"
                   value={form.flowRateLpm}
                   onChange={(e) => setForm((f) => ({ ...f, flowRateLpm: e.target.value }))}
@@ -324,7 +452,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Count</label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
+                  max={MAX_COUNT_VALUE}
                   step="1"
                   value={form.count}
                   onChange={(e) => setForm((f) => ({ ...f, count: e.target.value }))}
@@ -336,7 +465,8 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
                 <label className="text-sm font-semibold text-slate-700">Liters per unit</label>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={MAX_LITERS_PER_UNIT}
                   step="0.01"
                   value={form.litersPerUnit}
                   onChange={(e) => setForm((f) => ({ ...f, litersPerUnit: e.target.value }))}
@@ -353,9 +483,13 @@ function UsageModal({ title, form, setForm, saving, onSubmit, onClose, error }) 
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={3}
+              maxLength={MAX_NOTES_LENGTH}
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               placeholder="Add context for this record"
             />
+            <div className="mt-1 text-right text-xs text-slate-500">
+              {form.notes.length}/{MAX_NOTES_LENGTH}
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -649,6 +783,9 @@ export function WaterActivities() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [highUsageOnly, setHighUsageOnly] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(defaultForm());
@@ -660,6 +797,15 @@ export function WaterActivities() {
   const [presetManagerOpen, setPresetManagerOpen] = useState(false);
   const [weeklyGoalLiters, setWeeklyGoalLiters] = useState("700");
   const [weeklyGoalActivities, setWeeklyGoalActivities] = useState("20");
+
+  useEffect(() => {
+    if (!notice && !error) return;
+    const t = setTimeout(() => {
+      setNotice("");
+      setError("");
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [notice, error]);
 
   useEffect(() => {
     try {
@@ -707,9 +853,76 @@ export function WaterActivities() {
   }, [allPresets, selectedCategory]);
 
   const filteredItems = useMemo(() => {
-    if (selectedCategory === "all") return items;
-    return items.filter((item) => getActivityCategory(item.activityType) === selectedCategory);
-  }, [items, selectedCategory]);
+    const now = Date.now();
+    const dayAgo = now - (24 * 60 * 60 * 1000);
+    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+
+    return items.filter((item) => {
+      if (selectedCategory !== "all" && getActivityCategory(item.activityType) !== selectedCategory) {
+        return false;
+      }
+
+      if (sourceFilter !== "all" && String(item.source || "manual") !== sourceFilter) {
+        return false;
+      }
+
+      if (highUsageOnly && Number(item.liters || 0) < 50) {
+        return false;
+      }
+
+      const occurredAt = new Date(item.occurredAt || "").getTime();
+      if (!Number.isFinite(occurredAt)) return true;
+
+      if (timeFilter === "today") return occurredAt >= dayAgo;
+      if (timeFilter === "7d") return occurredAt >= sevenDaysAgo;
+      return true;
+    });
+  }, [items, selectedCategory, sourceFilter, highUsageOnly, timeFilter]);
+
+  const summary = useMemo(() => {
+    const totalLiters = filteredItems.reduce((sum, item) => sum + Number(item.liters || 0), 0);
+    const count = filteredItems.length;
+    const avgLiters = count > 0 ? totalLiters / count : 0;
+    const presetCount = filteredItems.filter((item) => String(item.source || "manual") === "preset").length;
+    const presetShare = count > 0 ? (presetCount / count) * 100 : 0;
+
+    return {
+      totalLiters,
+      count,
+      avgLiters,
+      presetShare,
+    };
+  }, [filteredItems]);
+
+  const groupedFilteredItems = useMemo(() => {
+    const sorted = [...filteredItems].sort((a, b) => {
+      const aTime = new Date(a?.occurredAt || 0).getTime();
+      const bTime = new Date(b?.occurredAt || 0).getTime();
+      return bTime - aTime;
+    });
+
+    const groups = [];
+    const map = new Map();
+
+    sorted.forEach((item) => {
+      const label = formatDateGroupLabel(item?.occurredAt || new Date().toISOString());
+      if (!map.has(label)) {
+        map.set(label, []);
+        groups.push({ label, items: map.get(label) });
+      }
+      map.get(label).push(item);
+    });
+
+    return groups;
+  }, [filteredItems]);
+
+  const hasQuickFilters = timeFilter !== "all" || sourceFilter !== "all" || highUsageOnly;
+
+  function clearQuickFilters() {
+    setTimeFilter("all");
+    setSourceFilter("all");
+    setHighUsageOnly(false);
+  }
 
   const weeklyStats = useMemo(() => {
     const now = Date.now();
@@ -912,6 +1125,41 @@ export function WaterActivities() {
         </div>
       </div>
 
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric
+          label="Total liters"
+          value={`${summary.totalLiters.toLocaleString(undefined, { maximumFractionDigits: 1 })} L`}
+          helper="From visible activities"
+          icon={Droplets}
+          cardTone="from-sky-50 to-cyan-50 border-sky-100"
+          iconTone="bg-sky-100 text-sky-700"
+        />
+        <SummaryMetric
+          label="Activities"
+          value={summary.count.toLocaleString()}
+          helper="Current filtered list"
+          icon={BarChart3}
+          cardTone="from-emerald-50 to-lime-50 border-emerald-100"
+          iconTone="bg-emerald-100 text-emerald-700"
+        />
+        <SummaryMetric
+          label="Average"
+          value={`${summary.avgLiters.toLocaleString(undefined, { maximumFractionDigits: 1 })} L`}
+          helper="Per activity"
+          icon={Filter}
+          cardTone="from-amber-50 to-orange-50 border-amber-100"
+          iconTone="bg-amber-100 text-amber-700"
+        />
+        <SummaryMetric
+          label="Preset share"
+          value={`${summary.presetShare.toFixed(0)}%`}
+          helper="Preset-based entries"
+          icon={Plus}
+          cardTone="from-slate-50 to-zinc-100 border-slate-200"
+          iconTone="bg-slate-200 text-slate-700"
+        />
+      </div>
+
       <Card className="mt-5 p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -943,21 +1191,37 @@ export function WaterActivities() {
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {filteredPresets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => quickAddPreset(preset)}
-              disabled={Boolean(quickSavingId)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-brand-200 hover:bg-brand-50/30 disabled:opacity-60"
-            >
-              <div className="text-sm font-semibold text-slate-900">{preset.label}</div>
-              <div className="mt-1 text-xs text-slate-500">
-                {preset.activityType} · ~{estimatePresetLiters(preset).toLocaleString()} L
-              </div>
-              {quickSavingId === preset.id ? (
-                <div className="mt-1 text-xs font-semibold text-brand-700">Logging...</div>
-              ) : null}
-            </button>
+            (() => {
+              const visual = getPresetVisual(preset);
+              const Icon = visual.icon;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => quickAddPreset(preset)}
+                  disabled={Boolean(quickSavingId)}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-brand-200 hover:bg-brand-50/30 disabled:opacity-60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{preset.label}</div>
+                      <div className="mt-1 text-xs text-slate-500">{preset.activityType}</div>
+                    </div>
+                    <span className={`grid h-8 w-8 place-items-center rounded-xl ${visual.tone}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                  </div>
+
+                  <div className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                    ~{estimatePresetLiters(preset).toLocaleString()} L
+                  </div>
+
+                  {quickSavingId === preset.id ? (
+                    <div className="mt-2 text-xs font-semibold text-brand-700">Logging...</div>
+                  ) : null}
+                </button>
+              );
+            })()
           ))}
           {filteredPresets.length === 0 ? (
             <p className="text-sm text-slate-500">No presets available for this category yet.</p>
@@ -965,15 +1229,18 @@ export function WaterActivities() {
         </div>
       </Card>
 
-      {error ? (
-        <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-100">
-          {error}
-        </div>
-      ) : null}
-
-      {notice ? (
-        <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-100">
-          {notice}
+      {(notice || error) ? (
+        <div className="pointer-events-none fixed right-4 top-20 z-50 flex w-[min(92vw,420px)] flex-col gap-2">
+          {error ? (
+            <div className="pointer-events-auto rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100 shadow-lg">
+              {error}
+            </div>
+          ) : null}
+          {notice ? (
+            <div className="pointer-events-auto rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100 shadow-lg">
+              {notice}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -1054,28 +1321,108 @@ export function WaterActivities() {
             <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-700">Recent logged activities</h2>
             <p className="mt-1 text-sm text-slate-600">Latest entries in the selected category confirm what was tracked.</p>
           </div>
-          <Button type="button" variant="ghost" className="gap-2" onClick={loadRecent}>
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+            >
+              <option value="all">All time</option>
+              <option value="today">Today</option>
+              <option value="7d">Last 7 days</option>
+            </select>
+
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700"
+            >
+              <option value="all">All sources</option>
+              <option value="manual">Manual</option>
+              <option value="preset">Preset</option>
+              <option value="imported">Imported</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setHighUsageOnly((v) => !v)}
+              className={`h-9 rounded-lg px-3 text-xs font-semibold transition ${
+                highUsageOnly
+                  ? "bg-brand-100 text-brand-900 ring-1 ring-brand-200"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              High usage only
+            </button>
+
+            <Button type="button" variant="ghost" className="gap-2" onClick={loadRecent}>
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
+          </div>
         </div>
+
+        {hasQuickFilters ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {timeFilter !== "all" ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                Time: {timeFilter === "today" ? "Today" : "Last 7 days"}
+              </span>
+            ) : null}
+            {sourceFilter !== "all" ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                Source: {sourceFilter}
+              </span>
+            ) : null}
+            {highUsageOnly ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-800">
+                High usage only
+              </span>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={clearQuickFilters}
+              className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-100"
+            >
+              <X className="h-3 w-3" /> Clear quick filters
+            </button>
+          </div>
+        ) : null}
 
         <div className="mt-4 space-y-2">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading recent activities...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="h-12 animate-pulse rounded-xl bg-slate-100" />
+              ))}
+            </div>
           ) : filteredItems.length === 0 ? (
-            <p className="text-sm text-slate-500">No activities found for this category yet.</p>
+            <p className="text-sm text-slate-500">No activities match these filters. Try clearing quick filters or log a new activity.</p>
           ) : (
-            filteredItems.map((item) => (
-              <div key={item._id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">{item.activityType || "-"}</div>
-                  <div className="text-xs text-slate-500 capitalize">
-                    {item.source || "manual"} · {item.occurredAt ? new Date(item.occurredAt).toLocaleString() : "-"}
+            groupedFilteredItems.map((group) => (
+              <div key={group.label} className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{group.label}</div>
+                {group.items.map((item) => (
+                  <div key={item._id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{item.activityType || "-"}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${getSourceTheme(item.source)}`}>
+                          {String(item.source || "manual").toUpperCase()}
+                        </span>
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                          {getActivityCategory(item.activityType).toUpperCase()}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {item.occurredAt ? new Date(item.occurredAt).toLocaleString() : "-"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-700">
+                      {Number(item.liters || 0).toLocaleString()} L
+                    </div>
                   </div>
-                </div>
-                <div className="text-sm font-semibold text-slate-700">
-                  {Number(item.liters || 0).toLocaleString()} L
-                </div>
+                ))}
               </div>
             ))
           )}
@@ -1106,6 +1453,15 @@ export function WaterActivities() {
         onUpdatePreset={updateCustomPreset}
         onDeletePreset={deleteCustomPreset}
       />
+
+      <button
+        type="button"
+        onClick={openCreate}
+        className="fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg ring-4 ring-brand-200/60 transition hover:bg-brand-700 md:hidden"
+        aria-label="Add water activity"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
     </div>
   );
 }

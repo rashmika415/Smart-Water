@@ -7,6 +7,7 @@
     "test:unit": "jest tests/unit --runInBand",
     "test:unit:usage": "jest tests/unit --runInBand --testPathPatterns=\"usage|carbonService|usageHelpers\"",
     "test:unit:saving-plan": "jest tests/unit/controllers/savingPlanController.test.js --runInBand",
+    "test:unit:usage": "jest tests/unit/controllers/usageController.test.js tests/unit/services/carbonService.test.js tests/unit/utils/usageHelpers.test.js --runInBand",
     "test:integration": "jest tests/integration --runInBand",
     "test:integration:usage": "jest tests/integration/usage --runInBand",
     "test:integration:saving-plan": "jest tests/integration/saving-plan --runInBand",
@@ -31,7 +32,8 @@
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.2.0"
+    "mongoose": "^9.2.0",
+    "openai": "^6.34.0"
   },
   "devDependencies": {
     "artillery": "^2.0.30",

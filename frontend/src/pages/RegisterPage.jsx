@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Clock3, Eye, EyeOff, Sparkles, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -37,7 +37,11 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-10">
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#ecfbff_0%,#ffffff_54%,#f3fbf6_100%)] px-4 py-10">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(14,165,233,0.16),transparent_36%),radial-gradient(circle_at_86%_12%,rgba(16,185,129,0.14),transparent_34%)]"
+      />
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2">
@@ -67,10 +71,35 @@ export function RegisterPage() {
               Track usage, set goals, and unlock personalized conservation tips designed for your
               household.
             </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Card className="public-card-hover public-reveal border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50 p-4" style={{ animationDelay: "60ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Quick Setup</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Clock3 className="h-4 w-4 text-sky-700" /> Start in under 1 minute
+                </div>
+              </Card>
+              <Card className="public-card-hover public-reveal border border-emerald-100 bg-gradient-to-br from-emerald-50 to-lime-50 p-4" style={{ animationDelay: "100ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Smart Goals</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Target className="h-4 w-4 text-emerald-600" /> Personalized saving targets
+                </div>
+              </Card>
+              <Card className="public-card-hover public-reveal border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4" style={{ animationDelay: "140ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">Actionable Tips</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">Daily recommendations tailored to usage.</div>
+              </Card>
+              <Card className="public-card-hover public-reveal border border-slate-200 bg-gradient-to-br from-slate-50 to-zinc-100 p-4" style={{ animationDelay: "180ms" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Experience</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Sparkles className="h-4 w-4 text-slate-700" /> Clean dashboard from day one
+                </div>
+              </Card>
+            </div>
           </div>
 
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Card className="p-7 sm:p-9">
+            <Card className="public-card-hover p-7 sm:p-9">
               <div className="text-lg font-extrabold text-slate-900">Register</div>
               <div className="mt-1 text-sm text-slate-600">It only takes a minute.</div>
 

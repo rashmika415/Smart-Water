@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  AlertTriangle,
   Activity,
+  Download,
   Gauge,
   Leaf,
   Receipt,
@@ -17,6 +19,10 @@ import { householdsApi, usageApi } from "../lib/api";
 
 function formatDateKey(value) {
   return new Date(value).toISOString().slice(0, 10);
+}
+
+function formatShortDate(value) {
+  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function buildWindowedTrend(rawTrend, days) {
@@ -88,7 +94,7 @@ function Reveal({ children, delay = 0, className = "" }) {
 
 function LandingFeature({ icon: Icon, title, body }) {
   return (
-    <div className="h-full rounded-2xl bg-white/80 p-3.5 ring-1 ring-slate-200/80 backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-30px_rgba(15,23,42,0.55)]">
+    <div className="public-card-hover h-full rounded-2xl bg-white/80 p-3.5 ring-1 ring-slate-200/80 backdrop-blur-sm">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white ring-1 ring-slate-200/80">
           <Icon className="h-5 w-5 text-brand-700" />
@@ -293,7 +299,7 @@ function PublicEstimator() {
 
 function Metric({ title, value, icon: Icon }) {
   return (
-    <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-30px_rgba(15,23,42,0.55)]">
+    <Card className="public-card-hover h-full border-0 bg-white p-4 ring-1 ring-slate-200/70">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</div>
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white ring-1 ring-slate-200/70">
@@ -302,6 +308,21 @@ function Metric({ title, value, icon: Icon }) {
       </div>
       <div className="mt-2 text-lg font-black text-slate-900 sm:text-xl">{value}</div>
     </Card>
+  );
+}
+
+function StatusChip({ children, tone = "default" }) {
+  const toneClass =
+    tone === "success"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200/80"
+      : tone === "warning"
+      ? "bg-amber-50 text-amber-800 ring-amber-200/80"
+      : "bg-white text-slate-700 ring-slate-200/80";
+
+  return (
+    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${toneClass}`}>
+      {children}
+    </div>
   );
 }
 
@@ -315,6 +336,7 @@ function PrivateMeter() {
   const [households, setHouseholds] = useState([]);
   const [recent, setRecent] = useState([]);
   const [monthFallbackTotals, setMonthFallbackTotals] = useState({ liters: 0, carbonKg: 0 });
+  const [lastSyncAt, setLastSyncAt] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -348,6 +370,7 @@ function PrivateMeter() {
         liters: fallbackLiters,
         carbonKg: Number(fallbackCarbonKg.toFixed(3)),
       });
+      setLastSyncAt(new Date());
     } catch (e) {
       setError(e?.message || "Failed to load virtual meter data");
       setStats(null);
@@ -375,8 +398,10 @@ function PrivateMeter() {
     const targetLiters = households.reduce((sum, h) => sum + Number(h.estimatedMonthlyLiters || 0), 0) || 1;
     const billForecast = households.reduce((sum, h) => sum + Number(h.predictedBill || 0), 0);
     const progress = Math.min((totalLiters / targetLiters) * 100, 100);
-
     const now = new Date();
+    const minutesElapsedToday = now.getHours() * 60 + now.getMinutes() + 1;
+    const todayAverageFlowLpm = todayLiters / minutesElapsedToday;
+
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const dayOfMonth = now.getDate();
     const elapsedRatio = Math.max(dayOfMonth / daysInMonth, 0.01);
@@ -392,6 +417,7 @@ function PrivateMeter() {
       targetLiters,
       billForecast,
       progress,
+      todayAverageFlowLpm,
       projectedMonthLiters,
       projectedMonthCarbon,
       litersDeltaToTarget,
@@ -431,6 +457,57 @@ function PrivateMeter() {
     };
   }, [trend]);
 
+  const trendComparison = useMemo(() => {
+    if (trend.length < 6) {
+      return { changePct: 0, direction: "stable" };
+    }
+
+    const liters = trend.map((d) => Number(d.totalLiters || 0));
+    const recentWindow = liters.slice(-3);
+    const previousWindow = liters.slice(-6, -3);
+    const recentAvg = recentWindow.reduce((sum, v) => sum + v, 0) / 3;
+    const previousAvg = previousWindow.reduce((sum, v) => sum + v, 0) / 3;
+
+    if (previousAvg <= 0) {
+      return { changePct: 0, direction: "stable" };
+    }
+
+    const changePct = ((recentAvg - previousAvg) / previousAvg) * 100;
+
+    return {
+      changePct,
+      direction: changePct > 5 ? "up" : changePct < -5 ? "down" : "stable",
+    };
+  }, [trend]);
+
+  const exportRecentToCsv = useCallback(() => {
+    if (!recent.length) return;
+
+    const headers = ["Date", "Activity", "Liters", "CarbonKg", "Source"];
+    const rows = recent.map((row) => [
+      row?.occurredAt ? new Date(row.occurredAt).toISOString() : "",
+      row?.activityType || "",
+      Number(row?.liters || 0),
+      Number(row?.carbonFootprint?.carbonKg || 0).toFixed(3),
+      row?.source || "manual",
+    ]);
+
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `virtual-meter-recent-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [recent]);
+
   return (
     <Card className="overflow-hidden border-0 bg-white/90 p-0 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.55)] ring-1 ring-slate-200/80">
       <SectionHeader
@@ -440,6 +517,23 @@ function PrivateMeter() {
       />
 
       <div className="p-5 sm:p-6">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <StatusChip tone="success">
+          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+          Live
+        </StatusChip>
+        <StatusChip>
+          Sync: {lastSyncAt ? lastSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+        </StatusChip>
+        <StatusChip>
+          Households: {households.length}
+        </StatusChip>
+        <StatusChip tone={trendSummary.hasSpike ? "warning" : "success"}>
+          {trendSummary.hasSpike ? <AlertTriangle className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+          Leak risk: {trendSummary.hasSpike ? "Elevated" : "Low"}
+        </StatusChip>
+      </div>
+
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-black tracking-tight text-slate-900">Real-time usage cockpit</h3>
@@ -449,14 +543,21 @@ function PrivateMeter() {
       </div>
 
       {error ? <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-100">{error}</div> : null}
-      {loading ? <p className="mt-4 text-sm text-slate-500">Loading your meter...</p> : null}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Today usage" value={`${summary.todayLiters.toLocaleString()} L`} icon={BrandLogo} />
-        <Metric title="This month usage" value={`${summary.totalLiters.toLocaleString()} L`} icon={Gauge} />
-        <Metric title="This month carbon" value={`${summary.totalCarbon.toFixed(3)} kg`} icon={Leaf} />
-        <Metric title="Bill forecast" value={summary.billForecast.toFixed(2)} icon={Receipt} />
-      </div>
+      {loading ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Card key={item} className="h-[110px] animate-pulse border-0 bg-white p-4 ring-1 ring-slate-200/70" />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric title="Avg flow today" value={`${summary.todayAverageFlowLpm.toFixed(2)} L/min`} icon={BrandLogo} />
+          <Metric title="Today usage" value={`${summary.todayLiters.toLocaleString()} L`} icon={Gauge} />
+          <Metric title="This month carbon" value={`${summary.totalCarbon.toFixed(3)} kg`} icon={Leaf} />
+          <Metric title="Bill forecast" value={summary.billForecast.toFixed(2)} icon={Receipt} />
+        </div>
+      )}
 
       <Card className="mt-4 border-0 bg-slate-50/90 p-3.5 ring-1 ring-slate-200/70">
         <div className="text-sm font-extrabold text-slate-900">Quick status</div>
@@ -465,7 +566,12 @@ function PrivateMeter() {
           {" · "}
           Projection: <span className="font-semibold text-slate-900">{Math.round(summary.projectedMonthLiters).toLocaleString()} L</span>
           {" · "}
-          Spike check: <span className="font-semibold text-slate-900">{trendSummary.hasSpike ? "Attention needed" : "Normal"}</span>
+          Goal progress: <span className="font-semibold text-slate-900">{summary.progress.toFixed(1)}%</span>
+        </div>
+        <div className="mt-2 text-xs text-slate-500">
+          {summary.litersDeltaToTarget > 0
+            ? `${Math.round(summary.litersDeltaToTarget).toLocaleString()} L projected above target by month end.`
+            : `${Math.round(Math.abs(summary.litersDeltaToTarget)).toLocaleString()} L projected below target by month end.`}
         </div>
       </Card>
 
@@ -478,6 +584,39 @@ function PrivateMeter() {
           Usage status normal: today is within your recent baseline ({Math.round(trendSummary.recentAverageLiters)} L/day).
         </div>
       )}
+
+      <Card className="mt-4 border-0 bg-white p-4 ring-1 ring-slate-200/70">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm font-extrabold text-slate-900">7-day usage trend</div>
+          <div className="text-xs font-semibold text-slate-600">
+            {trendComparison.direction === "up"
+              ? `${Math.abs(trendComparison.changePct).toFixed(1)}% above previous 3 days`
+              : trendComparison.direction === "down"
+              ? `${Math.abs(trendComparison.changePct).toFixed(1)}% below previous 3 days`
+              : "Stable compared with previous 3 days"}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-7 gap-2">
+          {(trend || []).map((item) => {
+            const max = Math.max(...(trend || []).map((x) => Number(x.totalLiters || 0)), 1);
+            const pct = Math.max((Number(item.totalLiters || 0) / max) * 100, 6);
+
+            return (
+              <div key={item.date} className="text-center">
+                <div className="mx-auto flex h-28 w-7 items-end rounded-full bg-slate-100 p-1">
+                  <div
+                    className="w-full rounded-full bg-gradient-to-t from-sky-500 to-cyan-300"
+                    style={{ height: `${pct}%` }}
+                    title={`${Number(item.totalLiters || 0).toLocaleString()} L`}
+                  />
+                </div>
+                <div className="mt-1 text-[10px] text-slate-500">{formatShortDate(item.date)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2 lg:items-stretch">
         <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70">
@@ -499,11 +638,14 @@ function PrivateMeter() {
         <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70">
           <div className="text-sm font-extrabold text-slate-900">Quick actions</div>
           <div className="mt-3 grid gap-2 sm:grid-cols-1">
-            <Button as={Link} to="/dashboard" className="gap-2" size="sm">
-              <TrendingUp className="h-4 w-4" /> Go to Dashboard
-            </Button>
             <Button as={Link} to="/user/water-activities" className="gap-2" size="sm">
-              <Activity className="h-4 w-4" /> Add activity
+              <Activity className="h-4 w-4" /> Add usage
+            </Button>
+            <Button as={Link} to="/user/usage" variant="ghost" size="sm" className="gap-2">
+              <TrendingUp className="h-4 w-4" /> View history
+            </Button>
+            <Button onClick={exportRecentToCsv} variant="ghost" size="sm" className="gap-2" disabled={!recent.length}>
+              <Download className="h-4 w-4" /> Export report
             </Button>
             <Button as={Link} to="/user/carbon-analytics" variant="ghost" size="sm" className="gap-2">
               <ShieldCheck className="h-4 w-4" /> View analytics
@@ -533,6 +675,27 @@ export function VirtualMeterPage() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <Reveal delay={30}>
           <VirtualMeterLandingIntro token={token} />
+        </Reveal>
+
+        <Reveal delay={120} className="mt-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Card className="public-card-hover border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Live Visibility</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">Monitor household water behavior in real-time.</div>
+            </Card>
+            <Card className="public-card-hover border border-emerald-100 bg-gradient-to-br from-emerald-50 to-lime-50 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Early Alerts</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">Detect spikes and unusual usage before bills increase.</div>
+            </Card>
+            <Card className="public-card-hover border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">Carbon Awareness</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">See how water habits connect to carbon impact.</div>
+            </Card>
+            <Card className="public-card-hover border border-slate-200 bg-gradient-to-br from-slate-50 to-zinc-100 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Action Ready</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">Jump from insights to quick actions in one place.</div>
+            </Card>
+          </div>
         </Reveal>
 
         <Reveal delay={200} className="mt-6">
