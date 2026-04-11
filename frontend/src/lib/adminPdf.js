@@ -1,6 +1,4 @@
-import { jsPDF } from "jspdf";
-
-/** @param {jsPDF} doc */
+/** @param {import('jspdf').jsPDF} doc */
 export function pdfEnsureSpace(doc, y, needed, left, pageWidth) {
   const pageHeight = doc.internal.pageSize.getHeight();
   if (y + needed > pageHeight - 48) {
