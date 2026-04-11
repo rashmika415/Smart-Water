@@ -5,7 +5,7 @@
   "scripts": {
     "test": "jest",
     "test:unit": "jest tests/unit --runInBand",
-    "test:unit:usage": "jest tests/unit --runInBand --testPathPatterns=\"usage|carbonService|usageHelpers\"",
+    "test:unit:usage": "jest tests/unit/controllers/usageController.test.js tests/unit/services/carbonService.test.js tests/unit/utils/usageHelpers.test.js --runInBand",
     "test:integration": "jest tests/integration --runInBand",
     "test:integration:usage": "jest tests/integration/usage --runInBand",
     "test:unit:my-utils": "jest tests/unit/utils/estimateUsage.test.js tests/unit/utils/weatherService.test.js --runInBand",
