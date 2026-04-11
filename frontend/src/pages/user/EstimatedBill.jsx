@@ -5,7 +5,7 @@ import { Card } from "../../components/ui/Card";
 import { BrandLogo } from "../../components/BrandLogo";
 import { Button } from "../../components/ui/Button";
 import { jsPDF } from "jspdf";
-import { Receipt, Gauge, CloudSun, Sparkles, TrendingUp, Wallet, Download } from "lucide-react";
+import { Receipt, Gauge, CloudSun, Sparkles, TrendingUp, Wallet, Download, Lightbulb } from "lucide-react";
 
 export function EstimatedBill() {
   const { token } = useAuth();
@@ -84,6 +84,19 @@ export function EstimatedBill() {
       y += gap;
     };
 
+    const maxTextW = pageWidth - left * 2 - 24;
+    const addWrappedLines = (text, size = 9, lineGap = 13, indent = left + 12) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(size);
+      doc.setTextColor(51, 65, 85);
+      const lines = doc.splitTextToSize(String(text), maxTextW - (indent - left));
+      lines.forEach((line) => {
+        ensureSpace(lineGap + 4);
+        doc.text(line, indent, y);
+        y += lineGap;
+      });
+    };
+
     // Header banner
     doc.setFillColor(10, 172, 190);
     doc.roundedRect(left, y - 26, pageWidth - left * 2, 84, 10, 10, "F");
@@ -146,6 +159,20 @@ export function EstimatedBill() {
       doc.setTextColor(3, 105, 161);
       doc.text(`Predicted Bill: Rs. ${Number(h.predictedBill || 0).toFixed(2)}`, left + 12, y + 62);
       y += 88;
+
+      const recs = Array.isArray(h.billRecommendations) ? h.billRecommendations : [];
+      if (recs.length) {
+        ensureSpace(28);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Recommendations — ${h.name || "Household"}`, left + 12, y);
+        y += 18;
+        recs.forEach((r, ri) => {
+          addWrappedLines(`${ri + 1}. ${r}`, 9, 12, left + 20);
+        });
+        y += 10;
+      }
     });
 
     addPageFooter();
@@ -262,13 +289,14 @@ export function EstimatedBill() {
                 <th className="px-4 py-3">Climate zone</th>
                 <th className="px-4 py-3">Predicted bill</th>
                 <th className="px-4 py-3">Insight</th>
+                <th className="min-w-[140px] px-4 py-3">AI tips</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Loading...</td></tr>
               ) : households.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No households yet.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">No households yet.</td></tr>
               ) : (
                 households.map((h) => (
                   <tr key={h._id}>
@@ -283,6 +311,16 @@ export function EstimatedBill() {
                         {(h.climateZone || "Intermediate")} factor applied
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-xs text-slate-600">
+                      {Array.isArray(h.billRecommendations) && h.billRecommendations.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 font-semibold text-violet-800 ring-1 ring-violet-100">
+                          <Lightbulb className="h-3.5 w-3.5" />
+                          {h.billRecommendations.length} tip{h.billRecommendations.length === 1 ? "" : "s"}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -290,6 +328,49 @@ export function EstimatedBill() {
           </table>
         </div>
       </Card>
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-5 w-5 text-violet-600" />
+          <h2 className="text-lg font-extrabold text-slate-900">Personalized recommendations</h2>
+        </div>
+        <p className="text-sm text-slate-600">
+          Generated from your household profile, climate zone, and estimated bill (OpenAI). Shown per household below; the same tips are included in your email and PDF export.
+        </p>
+        {households.some((h) => (Array.isArray(h.billRecommendations) ? h.billRecommendations : []).length > 0) ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {households.map((h) => {
+              const recs = Array.isArray(h.billRecommendations) ? h.billRecommendations.filter(Boolean) : [];
+              if (!recs.length) return null;
+              const gen = h.billRecommendationsGeneratedAt
+                ? new Date(h.billRecommendationsGeneratedAt).toLocaleString()
+                : null;
+              return (
+                <Card key={h._id} className="border-violet-100 bg-gradient-to-br from-white to-violet-50/40 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Household</p>
+                  <p className="mt-1 text-base font-extrabold text-slate-900">{h.name}</p>
+                  {gen ? (
+                    <p className="mt-1 text-xs text-slate-500">Updated {gen}</p>
+                  ) : null}
+                  <ul className="mt-4 list-inside list-decimal space-y-2 text-sm text-slate-700">
+                    {recs.map((tip, i) => (
+                      <li key={i} className="pl-1 marker:font-semibold">
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="border-dashed border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-600">
+            No tips were returned for your households. Refresh this page— the server fills missing recommendations on
+            load. If this persists, confirm the backend is running the latest code and check the server console for
+            errors.
+          </Card>
+        )}
+      </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800 ring-1 ring-brand-100">
         <div>

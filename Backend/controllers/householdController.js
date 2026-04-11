@@ -5,6 +5,30 @@ const { PRICE_PER_UNIT } = require("../config/waterConfig");
 const mongoose = require("mongoose");
 const User = require("../models/userModel"); // <-- added to fetch user email
 const { sendHouseholdEstimate } = require("../utils/householdEmail"); // <-- email helper
+const { getBillRecommendationsForHousehold } = require("../services/billRecommendationService");
+
+async function ensureHouseholdHasRecommendations(h) {
+  const has = Array.isArray(h.billRecommendations) && h.billRecommendations.length > 0;
+  if (has) return h;
+
+  const { recommendations = [] } = await getBillRecommendationsForHousehold({
+    name: h.name,
+    numberOfResidents: h.numberOfResidents,
+    propertyType: h.propertyType,
+    location: h.location,
+    predictedBill: h.predictedBill,
+    estimatedMonthlyLiters: h.estimatedMonthlyLiters,
+    estimatedMonthlyUnits: h.estimatedMonthlyUnits,
+    climateZone: h.climateZone,
+  });
+
+  if (Array.isArray(recommendations) && recommendations.length) {
+    h.billRecommendations = recommendations;
+    h.billRecommendationsGeneratedAt = new Date();
+    await h.save();
+  }
+  return h;
+}
 
 
 /* ======================================================
@@ -46,6 +70,22 @@ exports.createHousehold = async (req, res) => {
     let predictedBill = (usage.monthlyUnits || 0) * PRICE_PER_UNIT;
     if (usage.zone === "Wet") predictedBill *= 0.9;
     if (usage.zone === "Dry") predictedBill *= 1.15;
+    predictedBill = isNaN(predictedBill) ? 0 : Math.round(predictedBill * 100) / 100;
+
+    const estimatedMonthlyLiters = isNaN(usage.monthlyLiters) ? 0 : Math.round(usage.monthlyLiters);
+    const estimatedMonthlyUnits = isNaN(usage.monthlyUnits) ? 0 : Math.round(usage.monthlyUnits * 100) / 100;
+    const climateZone = usage.zone || "Intermediate";
+
+    const { recommendations = [] } = await getBillRecommendationsForHousehold({
+      name,
+      numberOfResidents,
+      propertyType,
+      location,
+      predictedBill,
+      estimatedMonthlyLiters,
+      estimatedMonthlyUnits,
+      climateZone,
+    });
 
     const household = new Household({
       name,
@@ -53,10 +93,12 @@ exports.createHousehold = async (req, res) => {
       propertyType,
       location,
       userId,
-      estimatedMonthlyLiters: isNaN(usage.monthlyLiters) ? 0 : Math.round(usage.monthlyLiters),
-      estimatedMonthlyUnits: isNaN(usage.monthlyUnits) ? 0 : Math.round(usage.monthlyUnits * 100) / 100,
-      climateZone: usage.zone || "Intermediate",
-      predictedBill: isNaN(predictedBill) ? 0 : Math.round(predictedBill * 100) / 100
+      estimatedMonthlyLiters,
+      estimatedMonthlyUnits,
+      climateZone,
+      predictedBill,
+      billRecommendations: recommendations,
+      billRecommendationsGeneratedAt: recommendations.length ? new Date() : undefined,
     });
 
     await household.save();
@@ -238,6 +280,19 @@ exports.updateHousehold = async (req, res) => {
 
     household.predictedBill = isNaN(predictedBill) ? 0 : Math.round(predictedBill * 100) / 100;
 
+    const { recommendations = [] } = await getBillRecommendationsForHousehold({
+      name: household.name,
+      numberOfResidents: household.numberOfResidents,
+      propertyType: household.propertyType,
+      location: household.location,
+      predictedBill: household.predictedBill,
+      estimatedMonthlyLiters: household.estimatedMonthlyLiters,
+      estimatedMonthlyUnits: household.estimatedMonthlyUnits,
+      climateZone: household.climateZone,
+    });
+    household.billRecommendations = recommendations;
+    household.billRecommendationsGeneratedAt = recommendations.length ? new Date() : undefined;
+
     await household.save();
 
     res.json(household);
@@ -288,6 +343,9 @@ exports.getMyHouseholds = async (req, res) => {
     const households = await Household.find({
       userId: req.user.id || req.user._id
     });
+    for (const h of households) {
+      await ensureHouseholdHasRecommendations(h);
+    }
     res.json(households);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -306,6 +364,10 @@ exports.getMyHouseholdsWithZones = async (req, res) => {
     const households = await Household.find({
       userId: req.user.id || req.user._id
     }).populate('zones'); // <-- populate zones field
+
+    for (const h of households) {
+      await ensureHouseholdHasRecommendations(h);
+    }
 
     // Respond with households including zones
     res.json(households);
