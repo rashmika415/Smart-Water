@@ -848,3 +848,81 @@ exports.getCarbonTrend = async (req, res) => {
 		});
 	}
 };
+
+/**
+ * Get daily water usage for the user's household
+ * @route GET /usage/daily-water-usage
+ * @query days - Number of days to average (default: 30)
+ */
+exports.getDailyWaterUsage = async (req, res) => {
+	try {
+		const userId = req.user.id;
+
+		// 🏠 Find user's household
+		const household = await Household.findOne({ userId });
+		if (!household) {
+			return res.status(404).json({
+				success: false,
+				message: "No household found for this user.",
+			});
+		}
+
+		const { days = 30 } = req.query;
+
+		const end = new Date();
+		const start = new Date(end.getTime() - parseInt(days) * 24 * 60 * 60 * 1000);
+
+		// Aggregate total liters over the period
+		const result = await Usage.aggregate([
+			{
+				$match: {
+					householdId: household._id,
+					occurredAt: { $gte: start, $lte: end },
+					deletedAt: null,
+				},
+			},
+			{
+				$group: {
+					_id: null,
+					totalLiters: { $sum: "$liters" },
+					daysWithUsage: { $addToSet: { $dateToString: { format: "%Y-%m-%d", date: "$occurredAt" } } },
+				},
+			},
+			{
+				$project: {
+					_id: 0,
+					totalLiters: 1,
+					daysWithUsage: { $size: "$daysWithUsage" },
+				},
+			},
+		]);
+
+		let averageDailyUsage = 0;
+		let totalLiters = 0;
+		let daysWithUsage = 0;
+
+		if (result.length > 0) {
+			totalLiters = result[0].totalLiters || 0;
+			daysWithUsage = result[0].daysWithUsage || 0;
+			averageDailyUsage = daysWithUsage > 0 ? totalLiters / daysWithUsage : 0;
+		}
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				householdId: household._id,
+				period: { startDate: start, endDate: end, days: parseInt(days) },
+				totalLiters: Math.round(totalLiters),
+				daysWithUsage,
+				averageDailyUsage: Math.round(averageDailyUsage),
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching daily water usage:", error);
+		return res.status(500).json({
+			success: false,
+			message: "Error fetching daily water usage",
+			error: error.message,
+		});
+	}
+};

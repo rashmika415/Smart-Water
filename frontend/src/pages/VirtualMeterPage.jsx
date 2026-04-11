@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
-  Droplet,
   Gauge,
   Leaf,
   Receipt,
@@ -10,6 +9,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Navbar, Footer } from "../components/SiteShell";
+import { BrandLogo } from "../components/BrandLogo";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../auth/AuthContext";
@@ -90,8 +90,8 @@ function LandingFeature({ icon: Icon, title, body }) {
   return (
     <div className="h-full rounded-2xl bg-white/80 p-3.5 ring-1 ring-slate-200/80 backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-30px_rgba(15,23,42,0.55)]">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700 ring-1 ring-sky-200/80">
-          <Icon className="h-5 w-5" />
+        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white ring-1 ring-slate-200/80">
+          <Icon className="h-5 w-5 text-brand-700" />
         </span>
         <div>
           <div className="text-base font-black tracking-tight text-slate-900">{title}</div>
@@ -160,7 +160,7 @@ function VirtualMeterLandingIntro({ token }) {
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <LandingFeature
-              icon={Droplet}
+              icon={BrandLogo}
               title="Per-Tap Tracking"
               body="Monitor each activity source clearly with liters and footprint impact."
             />
@@ -254,7 +254,7 @@ function PublicEstimator() {
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Estimated daily liters" value={`${estimate.dailyLiters.toLocaleString()} L`} icon={Droplet} />
+        <Metric title="Estimated daily liters" value={`${estimate.dailyLiters.toLocaleString()} L`} icon={BrandLogo} />
         <Metric title="Estimated monthly liters" value={`${estimate.monthlyLiters.toLocaleString()} L`} icon={Gauge} />
         <Metric title="Estimated monthly carbon" value={`${estimate.monthlyCarbonKg.toFixed(3)} kg`} icon={Leaf} />
         <Metric title="Estimated monthly bill" value={`${estimate.monthlyBill.toFixed(2)}`} icon={Receipt} />
@@ -296,7 +296,7 @@ function Metric({ title, value, icon: Icon }) {
     <Card className="h-full border-0 bg-white p-4 ring-1 ring-slate-200/70 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-30px_rgba(15,23,42,0.55)]">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</div>
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-100 to-emerald-100 ring-1 ring-slate-200/70">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white ring-1 ring-slate-200/70">
           <Icon className="h-4 w-4 text-brand-700" />
         </span>
       </div>
@@ -452,7 +452,7 @@ function PrivateMeter() {
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading your meter...</p> : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Today usage" value={`${summary.todayLiters.toLocaleString()} L`} icon={Droplet} />
+        <Metric title="Today usage" value={`${summary.todayLiters.toLocaleString()} L`} icon={BrandLogo} />
         <Metric title="This month usage" value={`${summary.totalLiters.toLocaleString()} L`} icon={Gauge} />
         <Metric title="This month carbon" value={`${summary.totalCarbon.toFixed(3)} kg`} icon={Leaf} />
         <Metric title="Bill forecast" value={summary.billForecast.toFixed(2)} icon={Receipt} />

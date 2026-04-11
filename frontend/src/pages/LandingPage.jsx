@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Navbar, Footer } from "../components/SiteShell";
+import { BrandLogo } from "../components/BrandLogo";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 
@@ -51,6 +52,8 @@ function FeatureCard({ icon: Icon, title, body, iconBg }) {
         return "bg-green-50 text-green-600";
       case 'green':
         return "bg-emerald-100 text-emerald-600";
+      case 'neutral':
+        return "bg-white text-slate-700 ring-1 ring-slate-200/80";
       default:
         return "bg-blue-100 text-blue-600";
     }
@@ -77,7 +80,7 @@ function TipCard({ icon: Icon, title, body, save }) {
   return (
     <Card className="p-5 hover:shadow-glow transition">
       <div className="flex items-start gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-50 to-sky-100 ring-1 ring-slate-200/70">
+        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white ring-1 ring-slate-200/70">
           <Icon className="h-5 w-5 text-brand-700" />
         </div>
         <div className="min-w-0">
@@ -206,7 +209,7 @@ export function LandingPage() {
               >
                 <img 
                   src="/3.jpg" 
-                  alt="SmartWater Hero Image"
+                  alt="SmartWater hero"
                   className="w-full h-auto object-cover"
                 />
               </motion.div>
@@ -241,10 +244,10 @@ export function LandingPage() {
 
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <FeatureCard
-              icon={Droplet}
+              icon={BrandLogo}
               title="Virtual Water Meter"
               body="Track your real-time water consumption with our smart virtual meter. Get instant readings for every tap and appliance."
-              iconBg="blue"
+              iconBg="neutral"
             />
             <FeatureCard
               icon={Leaf}
@@ -354,15 +357,23 @@ export function LandingPage() {
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {[
-                  { icon: Droplet, title: "Per-Tap Tracking", body: "Monitor each water source individually." },
-                  { icon: ShieldCheck, title: "Leak Detection", body: "Instant alerts for unusual flow." },
-                  { icon: Activity, title: "Usage History", body: "Compare trends over time." },
-                  { icon: BarChart3, title: "Live Dashboard", body: "Real-time updates every second." },
+                  {
+                    title: "Per-Tap Tracking",
+                    body: "Monitor each water source individually.",
+                    logo: true,
+                  },
+                  { title: "Leak Detection", body: "Instant alerts for unusual flow.", Icon: ShieldCheck },
+                  { title: "Usage History", body: "Compare trends over time.", Icon: Activity },
+                  { title: "Live Dashboard", body: "Real-time updates every second.", Icon: BarChart3 },
                 ].map((x) => (
                   <Card key={x.title} className="p-5">
                     <div className="flex items-start gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-50 to-sky-100 ring-1 ring-slate-200/70">
-                        <x.icon className="h-5 w-5 text-brand-700" />
+                      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white ring-1 ring-slate-200/70">
+                        {x.logo ? (
+                          <BrandLogo className="h-6 w-6" alt="" />
+                        ) : (
+                          <x.Icon className="h-5 w-5 text-brand-700" />
+                        )}
                       </div>
                       <div>
                         <div className="text-sm font-extrabold text-slate-900">{x.title}</div>
@@ -417,7 +428,7 @@ export function LandingPage() {
                   save="Save 15L/day"
                 />
                 <TipCard
-                  icon={Droplet}
+                  icon={BrandLogo}
                   title="Garden Wisely"
                   body="Water plants early morning or evening to reduce evaporation."
                   save="Save 30L/week"
@@ -607,8 +618,8 @@ export function LandingPage() {
             <div className="absolute -left-24 -bottom-24 h-72 w-72 rounded-full bg-gradient-to-br from-sky-200/40 to-brand-200/10 blur-2xl" />
 
             <div className="relative mx-auto max-w-3xl text-center">
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-soft">
-                <Droplet className="h-7 w-7" />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center">
+                <BrandLogo className="h-16 w-16" alt="" />
               </div>
               <h3 className="mt-5 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
                 Ready to Start <span className="text-brand-700">Saving Water?</span>

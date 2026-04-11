@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { usageApi } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
+import { BrandLogo } from "../../components/BrandLogo";
 import { Button } from "../../components/ui/Button";
-import { RefreshCw, ArrowUpRight, ArrowDownRight, Minus, Flame, Droplets, BarChart3 } from "lucide-react";
+import { RefreshCw, ArrowUpRight, ArrowDownRight, Minus, Flame, BarChart3 } from "lucide-react";
 
 function formatDateInput(value) {
   const date = new Date(value);
@@ -451,7 +452,7 @@ export function CarbonAnalytics() {
 
         <Card className="p-5">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <Droplets className="h-4 w-4 text-sky-500" /> Carbon intensity
+            <BrandLogo className="h-4 w-4" alt="" /> Carbon intensity
           </div>
           <div className="mt-2 text-xl font-black text-slate-900">{summary.carbonPerLiterGrams.toFixed(2)} g/L</div>
           <div className="mt-1 text-xs text-slate-500">Grams of carbon per liter in the selected period.</div>

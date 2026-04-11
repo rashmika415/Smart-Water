@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Droplet, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { BrandLogo } from "../components/BrandLogo";
 import { useAuth } from "../auth/AuthContext";
 
 export function RegisterPage() {
@@ -40,9 +41,7 @@ export function RegisterPage() {
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-sm">
-              <Droplet className="h-5 w-5" />
-            </span>
+            <BrandLogo className="h-10 w-10" alt="" />
             <div className="text-sm font-extrabold text-slate-900">SmartWater</div>
           </Link>
           <div className="text-sm text-slate-600">
