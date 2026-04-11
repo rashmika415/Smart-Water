@@ -34,6 +34,50 @@ function safeNumber(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function normalizeTrendDate(item) {
+  const direct = formatDateKey(item?.date);
+  if (direct) return direct;
+
+  const id = item?._id;
+  if (typeof id === "string") {
+    const parsed = formatDateKey(id);
+    if (parsed) return parsed;
+  }
+
+  if (id && typeof id === "object") {
+    const year = Number(id.year);
+    const month = Number(id.month);
+    const day = Number(id.day);
+    if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)) {
+      const asDate = new Date(Date.UTC(year, month - 1, day));
+      const parsed = formatDateKey(asDate);
+      if (parsed) return parsed;
+    }
+  }
+
+  return "";
+}
+
+function aggregateRecentUsage(usages, days = 7) {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - (days - 1));
+  const startMs = start.setHours(0, 0, 0, 0);
+
+  const grouped = new Map();
+  (Array.isArray(usages) ? usages : []).forEach((item) => {
+    const key = formatDateKey(item?.occurredAt);
+    if (!key) return;
+    const time = new Date(`${key}T00:00:00`).getTime();
+    if (time < startMs) return;
+    grouped.set(key, (grouped.get(key) || 0) + safeNumber(item?.liters || 0));
+  });
+
+  return Array.from(grouped.entries())
+    .map(([date, totalLiters]) => ({ date, totalLiters }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
 function TrendBars({ points }) {
   const max = Math.max(...points.map((p) => safeNumber(p.totalLiters || p.value || 0)), 1);
   const items = points.map((p) => ({
@@ -92,19 +136,21 @@ export function UserDashboard() {
     try {
       const res = await usageApi.dailyWaterUsage(token, { days: 7 });
       const raw = res?.data?.trend;
-      if (!Array.isArray(raw)) {
-        // Some backends only return averageDailyUsage; we fall back to empty.
-        setTrend([]);
-        setTrendLoading(false);
-        return;
+      let normalized = Array.isArray(raw)
+        ? raw
+          .map((item) => ({
+            date: normalizeTrendDate(item),
+            totalLiters: safeNumber(item?.totalLiters || item?.liters || item?.value || 0),
+          }))
+          .filter((item) => item.date)
+          .slice(-7)
+        : [];
+
+      // Fallback: aggregate recent usage records when trend endpoint shape is unavailable.
+      if (normalized.length === 0) {
+        const usageRes = await usageApi.list(token, { page: 1, limit: 300, sort: "-occurredAt" });
+        normalized = aggregateRecentUsage(usageRes?.data, 7).slice(-7);
       }
-      const normalized = raw
-        .map((item) => ({
-          date: String(item?.date || item?._id || ""),
-          totalLiters: safeNumber(item?.totalLiters || item?.liters || item?.value || 0),
-        }))
-        .filter((item) => item.date)
-        .slice(-7);
 
       setTrend(normalized);
     } catch (err) {
