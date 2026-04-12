@@ -1,396 +1,242 @@
-# 💧 Smart-Water Management System
+# Smart-Water Management System
 
-A comprehensive water usage management and monitoring system that helps households track water consumption, receive intelligent alerts, create saving plans, and monitor different zones. The system integrates weather data to provide smart recommendations and sends email notifications for usage alerts.
+Smart-Water is a full-stack water management application designed to support sustainable household water usage through monitoring, analytics, planning, and operational workflows.
 
-## 📋 Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Project Structure](#project-structure)
-- [API Endpoints](#api-endpoints)
-- [Usage](#usage)
-- [Architecture](#architecture)
-- [Contributing](#contributing)
-- [License](#license)
+## 1. Abstract
+This project provides a practical platform for tracking water usage at household level, generating personalized saving plans, and visualizing environmental impact through carbon metrics. The system combines user and household management with usage analytics, zone-level organization, activity scheduling, and administrative notifications.
 
-## ✨ Features
+## 2. Project Objective
+The primary objective is to build a production-oriented system that helps users and administrators:
+- Monitor water usage behavior
+- Reduce waste through saving recommendations
+- Measure environmental impact via carbon-footprint analytics
+- Manage household and zone data with secure access control
 
-### Core Functionality
-- **User Authentication & Authorization**
-  - JWT-based authentication
-  - Role-based access control (Admin/User)
-  - Secure password hashing with bcrypt
+## 3. Scope
+- Role-based authentication and authorization
+- Household, zone, and user management
+- Water usage CRUD and analytics
+- Saving plan creation and tracking
+- Carbon statistics and leaderboard endpoints
+- Activity and notification modules
+- Unit, integration, and performance test support
 
-- **Water Usage Tracking**
-  - Real-time usage monitoring
-  - Historical usage data
-  - Usage estimation and predictions
-  - Multi-zone tracking support
 
-- **Smart Saving Plans**
-  - Customizable water saving goals
-  - Household size-based recommendations
-  - Priority area targeting
-  - Water source tracking
 
-- **Household Management**
-  - Multi-household support
-  - Household member management
-  - Zone-based consumption tracking
+## 4. System Overview
+### Architecture Style
+Backend follows MVC-style organization:
+- Models: MongoDB schemas with Mongoose
+- Controllers: business logic and response handling
+- Routes: endpoint definitions and middleware composition
 
-- **Intelligent Alert System**
-  - Customizable alert preferences
-  - Email notifications via SendGrid/Nodemailer
-  - Threshold-based alerts
-  - Activity logging and monitoring
+Frontend is a React application that consumes backend APIs.
 
-- **Weather Integration**
-  - Weather-based consumption insights
-  - Smart recommendations based on weather conditions
-  - Seasonal usage patterns
+### High-Level Components
+- Backend API: Express + MongoDB
+- Frontend UI: React
+- Testing layer: Jest, Supertest, mongodb-memory-server, Artillery
 
-- **🌍 Carbon Footprint Tracking** (NEW)
-  - Automatic CO2 emission calculation for all water usage
-  - Real-time environmental impact feedback
-  - Carbon equivalents (car km, trees, phone charges)
-  - Activity-based carbon breakdown
-  - Household carbon leaderboards
-  - Daily trend analysis
-  - Educational sustainability metrics
+## 5. Core Features
+- JWT-based authentication
+- Role-based access control for admin and user
+- Household and zone management
+- Usage recording with validation
+- Carbon-footprint computation and trend analytics
+- Saving plan generation and update workflows
+- Admin usage overview, household analytics, and anomaly detection
+- Activity scheduling and admin notification endpoints
 
-## 🛠 Tech Stack
-
+## 6. Technology Stack
 ### Backend
-- **Runtime:** Node.js
-- **Framework:** Express.js v5.2.1
-- **Database:** MongoDB with Mongoose ODM v9.2.0
-- **Authentication:** JWT (jsonwebtoken v9.0.3)
-- **Security:** bcryptjs v3.0.3
-- **Email Services:** 
-  - Nodemailer v8.0.1
-  - SendGrid integration
-- **HTTP Client:** Axios v1.13.5
-- **Environment Management:** dotenv v17.2.4
-- **🌍 Third-Party APIs:**
-  - OpenWeather API (weather data)
-  - CarbonInterface API (carbon footprint calculations)
+- Node.js
+- Express
+- MongoDB and Mongoose
+- jsonwebtoken
+- bcryptjs
+- Axios
+- Nodemailer
 
-### Development Tools
-- **Nodemon** v3.1.11 - Auto-restart during development
+### Frontend
+- React
+- React Router
+- Tailwind CSS
 
-## 📦 Prerequisites
+### Testing and Quality
+- Jest
+- Supertest
+- mongodb-memory-server
+- Artillery
 
-Before you begin, ensure you have the following installed:
-- **Node.js** (v14.x or higher)
-- **MongoDB** (v4.x or higher)
-- **npm** or **yarn** package manager
-
-### Required API Keys
-- CarbonInterface API key (for carbon footprint calculations - optional, has local fallback)
-- MongoDB connection URI
-- SendGrid API key (for email notifications)
-- Weather API key (for weather integration)
-
-## 🚀 Installation
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/Smart-Water.git
-cd Smart-Water
+## 7. Repository Structure
+```text
+Smart-Water/
+  Backend/
+    app.js
+    config/
+    controllers/
+    middleware/
+    models/
+    routes/
+    services/
+    tests/
+    utils/
+  frontend/
+    src/
+    public/
+  documents/
+    API_ENDPOINT_DOCUMENTATION.md
+    DEPLOY_REPORT.md
+    TESTING_INSTRUCTION_REPORT.md
+  render.yaml
+  README.md
 ```
 
-### 2. Install Backend Dependencies
+## 8. Installation and Setup
+### Prerequisites
+- Node.js and npm
+- MongoDB instance (local or cloud)
+
+### Step 1: Install Dependencies
 ```bash
 cd Backend
 npm install
+
+cd ../frontend
+npm install
 ```
 
-### 3. Set Up Environment Variables
-Create a `.env` file in the `Backend` directory (see [Environment Variables](#environment-variables) section)
+### Step 2: Configure Environment Files
+- Backend environment file: Backend/.env
+- Frontend environment file: frontend/.env
 
-### 4. Start MongoDB
-Ensure your MongoDB server is running:
-```bash
-# For Windows
-net start MongoDB
-
-# For Mac/Linux
-sudo systemctl start mongod
-```
-
-### 5. Run the Application
-```bash
-# Development mode with auto-restart
-npm start
-
-# Production mode
-node app.js
-```
-
-The server will start on `http://localhost:5000` (or your specified PORT)
-
-## 🔐 Environment Variables
-
-Create a `.env` file in the `Backend` directory with the following variables:
-
-```env
-# Server Configuration
-PORT=5000
-NODE_ENV=development
-
-# Database
-MONGO_URI=mongodb://localhost:27017/smart-water
-
-# JWT Authentication
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRE=7d
-
-# Email Configuration (SendGrid)
-SENDGRID_API_KEY=your_sendgrid_api_key
-SENDGRID_FROM_EMAIL=noreply@smartwater.com
-
-# Email Configuration (Nodemailer - Alternative)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASSWORD=your_email_password
-
-# Weather API
-WEATHER_API_KEY=your_weather_api_key
-WEATHER_API_URL=https://api.weatherapi.com/v1
-
-# Frontend URL (for CORS)
-FRONTEND_URL=http://localhost:3000
-```
-
-> **Note:** For SendGrid setup instructions, refer to [Backend/SENDGRID_SETUP.md](Backend/SENDGRID_SETUP.md)
-
-## 📁 Project Structure
-
-```
-Smart-Water/
-├── README.md                          # Main project documentation
-├── Backend/                           # Backend application
-│   ├── app.js                        # Application entry point
-│   ├── package.json                  # Dependencies and scripts
-│   ├── README.md                     # Backend-specific documentation
-│   ├── SENDGRID_SETUP.md            # SendGrid configuration guide
-│   ├── testNodemailer.js            # Email service testing
-│   │
-│   ├── config/                       # Configuration files
-│   │   └── waterConfig.js           # Water usage configurations
-│   │
-│   ├── controllers/                  # Business logic layer
-│   │   ├── activityController.js    # Activity management
-│   │   ├── alertController.js       # Alert handling
-│   │   ├── authController.js        # Authentication logic
-│   │   ├── householdController.js   # Household management
-│   │   ├── SavingPlanController.js  # Saving plans
-│   │   ├── usageController.js       # Usage tracking
-│   │   ├── userController.js        # User management
-│   │   └── zoneController.js        # Zone management
-│   │
-│   ├── middleware/                   # Express middleware
-│   │   ├── authMiddleware.js        # JWT authentication
-│   │   ├── roleMiddleware.js        # Role-based access control
-│   │   └── validationMiddleware.js  # Input validation
-│   │
-│   ├── models/                       # Data models (Mongoose schemas)
-│   │   ├── Activity.js              # Activity schema
-│   │   ├── AlertPreferencesModel.js # Alert preferences
-│   │   ├── householdModel.js        # Household schema
-│   │   ├── SavingPlanModel.js       # Saving plan schema
-│   │   ├── UsageModel.js            # Usage data schema
-│   │   ├── userModel.js             # User schema
-│   │   └── zoneModel.js             # Zone schema
-│   │
-│   ├── routes/                       # API route definitions
-│   │   ├── activityRoutes.js        # /api/activities
-│   │   ├── alertRoutes.js           # /api/alerts
-│   │   ├── authRoutes.js            # /api/auth
-│   │   ├── householdRoutes.js       # /api/households
-│   │   ├── SavingPlanRoute.js       # /SavingPlan
-│   │   ├── usageRoute.js            # /usage
-│   │   ├── userRoutes.js            # /api/users
-│   │   └── zoneRoutes.js            # /api/zones
-│   │
-│   ├── services/                     # External service integrations
-│   │   └── emailService.js          # Email sending service
-│   │
-│   └── utils/                        # Utility functions
-│       ├── emailAlertHelper.js      # Email alert helpers
-│       ├── estimateUsage.js         # Usage estimation logic
-│       ├── householdEmail.js        # Household email templates
-│       ├── sendGridService.js       # SendGrid integration
-│       ├── usageHelpers.js          # Usage calculation helpers
-│       └── weatherService.js        # Weather API integration
-│
-└── Frontend/                         # Frontend application
-    └── create-activity.html         # Activity creation interface
-```
-
-## 🔌 API Endpoints
-
-### Authentication (`/api/auth`)
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-
-### Users (`/api/users`)
-- `GET /api/users` - Get all users (Admin only)
-- `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user (Admin only)
-
-### Households (`/api/households`)
-- `GET /api/households` - Get all households
-- `POST /api/households` - Create household
-- `GET /api/households/:id` - Get household by ID
-- `PUT /api/households/:id` - Update household
-- `DELETE /api/households/:id` - Delete household
-
-### Usage Tracking (`/usage`)
-- `GET /usage` - Get usage data
-- `POST /usage` - Record usage
-- `GET /usage/history` - Get usage history
-- `GET /usage/estimate` - Get usage estimate
-- `GET /usage/:id` - Get usage by ID
-- `PUT /usage/:id` - Update usage
-- `DELETE /usage/:id` - Delete usage
-
-### 🌍 Carbon Footprint (`/usage/carbon-*`)
-- `GET /usage/carbon-stats` - Get carbon statistics
-- `GET /usage/carbon-by-activity` - Carbon breakdown by activity
-- `GET /usage/carbon-leaderboard` - Household carbon leaderboard
-- `GET /usage/carbon-trend` - Daily carbon trend analysis
-
-### Saving Plans (`/SavingPlan`)
-- `GET /SavingPlan` - Get all saving plans
-- `POST /SavingPlan` - Create saving plan
-- `GET /SavingPlan/:id` - Get plan by ID
-- `PUT /SavingPlan/:id` - Update saving plan
-- `DELETE /SavingPlan/:id` - Delete saving plan
-
-### Zones (`/api/zones`)
-- `GET /api/zones` - Get all zones
-- `POST /api/zones` - Create zone
-- `GET /api/zones/:id` - Get zone by ID
-- `PUT /api/zones/:id` - Update zone
-- `DELETE /api/zones/:id` - Delete zone
-
-### Activities (`/api/activities`)
-- `GET /api/activities` - Get all activities
-- `POST /api/activities` - Create activity
-- `GET /api/activities/:id` - Get activity by ID
-- `PUT /api/activities/:id` - Update activity
-- `DELETE /api/activities/:id` - Delete activity
-
-## 💻 Usage
-
-### Starting the Application
-
-1. **Development Mode:**
-   ```bash
-   cd Backend
-   npm start
-   ```
-   The server will run on port 5000 with auto-restart enabled.
-
-2. **Access the API:**
-   Navigate to `http://localhost:5000/` to verify the server is running.
-
-3. **Frontend:**
-   Open `Frontend/create-activity.html` in your browser or serve it via a local server.
-
-### Testing Email Service
+### Step 3: Run Backend
 ```bash
 cd Backend
-node testNodemailer.js
+npm run dev
 ```
 
-### API Testing
-You can test the API endpoints using:
-- **Postman** - Import the API collection
-- **cURL** - Command line requests
-- **Thunder Client** - VS Code extension
-
-Example request:
+### Step 4: Run Frontend
 ```bash
-# Register a new user
-curl -X POST http://localhost:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"John Doe","email":"john@example.com","password":"securePassword123"}'
+cd frontend
+npm start
 ```
 
-## 🏗 Architecture
+Default local URLs:
+- Backend: http://localhost:5000
+- Frontend: http://localhost:3000
 
-The Smart-Water system follows the **MVC (Model-View-Controller)** architectural pattern:
+## 9. Environment Variables
+### Backend Required Variables
+```env
+MONGO_URI=<mongodb_connection_string>
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+JWT_SECRET=<jwt_secret>
 
-### Model (Data Layer)
-- Mongoose schemas define data structure
-- Database validation and constraints
-- Data relationships and references
+WEATHER_API_KEY=<weather_api_key>
+WEATHER_API_KEY_WaterSavingPlan=<weather_api_key_for_saving_plan>
+CarbonInterface_API_key=<carbon_interface_api_key>
 
-### View (Presentation Layer)
-- HTML/CSS/JavaScript frontend
-- User interface components
-- Form handling and validation
-
-### Controller (Business Logic Layer)
-- Request handling and processing
-- Business logic implementation
-- Response formatting
-- Error handling
-
-### Data Flow
-```
-Client Request → Routes → Middleware → Controllers → Models → Database
-                                                        ↓
-Client Response ← Routes ← Middleware ← Controllers ← Models ← Database
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<smtp_user>
+SMTP_PASS=<smtp_password>
+FROM_EMAIL=<from_email>
+FROM_NAME=<from_name>
 ```
 
-### Middleware Layers
-1. **Authentication Middleware** - Verifies JWT tokens
-2. **Role Middleware** - Checks user permissions
-3. **Validation Middleware** - Validates request data
+### Frontend Required Variables
+```env
+REACT_APP_API_BASE_URL=http://localhost:5000
+```
 
-For detailed architecture documentation, see [Backend/README.md](Backend/README.md)
+## 10. Run Scripts
+### Backend
+- npm run dev
+- npm start
+- npm test
+- npm run test:unit
+- npm run test:integration
+- npm run test:performance
 
-## 🤝 Contributing
+### Frontend
+- npm start
+- npm run build
+- npm test
 
-Contributions are welcome! Please follow these steps:
+## 11. Testing Instructions
+Run from Backend:
+Testing Instruction Report: [documents/TESTING_INSTRUCTION_REPORT.md](documents/TESTING_INSTRUCTION_REPORT.md)
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Unit
+```bash
+npm run test:unit
+npm run test:unit:saving-plan
+npm run test:unit:usage
+npm run test:unit:my-utils
+npm run test:unit:my-controllers
+```
 
-### Coding Standards
-- Follow ESLint configuration
-- Write meaningful commit messages
-- Add comments for complex logic
-- Update documentation as needed
+### Integration
+```bash
+npm run test:integration
+npm run test:integration:saving-plan
+npm run test:integration:usage
+npm run test:integration:my-modules
+```
 
+### Performance
+Set PERF_BASE_URL and PERF_JWT_TOKEN, then run:
+```bash
+npm run test:performance:usage
+npm run test:performance:usage:spike
+npm run test:performance:saving-plan
+npm run test:performance:saving-plan:spike
+npm run test:performance:my-module
+npm run test:performance:my-module:spike
+```
 
-## 📞 Support & Contact
+## 12. API Entry Points
+Current mounted route groups:
+- /api/auth
+- /api/users
+- /api/households
+- /api/zones
+- /api/activities
+- /api/admin-notifications
+- /usage
+- /SavingPlan
 
-For support, questions, or feedback:
-- **Email:** support@smartwater.com
-- **Issues:** [GitHub Issues](https://github.com/yourusername/Smart-Water/issues)
+Health endpoint:
+- GET /
 
-## 🙏 Acknowledgments
+Complete API reference:
+- [documents/API_ENDPOINT_DOCUMENTATION.md](documents/API_ENDPOINT_DOCUMENTATION.md)
 
-- MongoDB for database solutions
-- Express.js community
-- SendGrid for email services
-- Weather API providers
+## 13. Deployment Summary
+- Backend service configuration is available in render.yaml
+- Deployment details are documented in [documents/DEPLOY_REPORT.md](documents/DEPLOY_REPORT.md)
 
----
+## 14. Documentation Index
+- API Endpoint Documentation: [documents/API_ENDPOINT_DOCUMENTATION.md](documents/API_ENDPOINT_DOCUMENTATION.md)
+- Deployment Report: [documents/DEPLOY_REPORT.md](documents/DEPLOY_REPORT.md)
+- Testing Instruction Report: [documents/TESTING_INSTRUCTION_REPORT.md](documents/TESTING_INSTRUCTION_REPORT.md)
+- Backend Testing Overview: [Backend/tests/TESTING_OVERVIEW.md](Backend/tests/TESTING_OVERVIEW.md)
+- API Smoke Testing Guide: [Backend/tests/API/API_SMOKE_TESTING.md](Backend/tests/API/API_SMOKE_TESTING.md)
+- Unit Testing Guide: [Backend/tests/unit/UNIT_TESTING_GUIDE.md](Backend/tests/unit/UNIT_TESTING_GUIDE.md)
+- Integration Testing Guide: [Backend/tests/integration/INTEGRATION_TESTING_GUIDE.md](Backend/tests/integration/INTEGRATION_TESTING_GUIDE.md)
+- Performance Testing Guide: [Backend/tests/performance/PERFORMANCE_TESTING_GUIDE.md](Backend/tests/performance/PERFORMANCE_TESTING_GUIDE.md)
+- Usage Performance Guide: [Backend/tests/performance/usage/USAGE_PERFORMANCE_TESTING.md](Backend/tests/performance/usage/USAGE_PERFORMANCE_TESTING.md)
+- User-Household-Zone Performance Guide: [Backend/tests/performance/user-household-zone/USER_HOUSEHOLD_ZONE_PERFORMANCE_TESTING.md](Backend/tests/performance/user-household-zone/USER_HOUSEHOLD_ZONE_PERFORMANCE_TESTING.md)
 
-**Last Updated:** February 2026  
-**Version:** 1.0.0
+## 15. Known Implementation Notes
+- CORS allows local origins and values configured in FRONTEND_URL.
+- Usage endpoints are mounted under /usage.
+- GET/PUT/DELETE on /SavingPlan/:id are currently exposed without auth middleware in route configuration.
 
-Made with 💧 for a sustainable future
+## 16. Conclusion
+Smart-Water provides a structured and extensible base for household water monitoring and sustainability analytics. The current implementation supports core academic and practical requirements for authentication, domain management, analytics, testing, and deployment documentation.
+
+Last updated: April 2026
