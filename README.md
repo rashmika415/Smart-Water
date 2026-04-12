@@ -1,4 +1,4 @@
-# Smart-Water Management System
+# Smart-Water 
 
 Smart-Water is a full-stack water management application designed to support sustainable household water usage through monitoring, analytics, planning, and operational workflows.
 
